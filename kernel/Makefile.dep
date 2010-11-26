@@ -1,0 +1,2 @@
+obj/kernel.o: kernel.cpp include/multiboot.h
+obj/loader.o: loader.s
