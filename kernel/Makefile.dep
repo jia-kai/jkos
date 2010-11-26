@@ -1,2 +1,5 @@
-obj/kernel.o: kernel.cpp include/multiboot.h
+obj/cstring.o: cstring.cpp include/cstring.h
+obj/kernel.o: kernel.cpp include/multiboot.h include/scio.h
+obj/scio.o: scio.cpp include/typedef.h include/scio.h include/cstring.h \
+ include/stdarg.h include/port.h
 obj/loader.o: loader.s

@@ -6,8 +6,8 @@ CXX = g++
 AS = as
 
 INCLUDE_DIR = -I include
-CXXFLAGS = -Wall -Wextra -nostdlib -fno-builtin -nostartfiles -nodefaultlibs -fno-exceptions -fno-rtti \
-		   -fno-stack-protector $(INCLUDE_DIR)
+CXXFLAGS = -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
+		   -fno-stack-protector $(INCLUDE_DIR) -g 
 OBJ_DIR = obj
 
 hda.img: kernel.bin
@@ -36,10 +36,15 @@ obj/%.o: %.s
 kernel.bin: linker.ld $(OBJS)
 	ld -T linker.ld -o kernel.bin $(OBJS)
 
-.PHONY: qemu clean
+.PHONY: qemu clean hg
 qemu: hda.img
 	qemu -hda hda.img
 
 clean:
-	rm kernel.bin $(OBJS)
+	rm -f kernel.bin $(OBJS)
+
+hg:
+	hg addremove
+	hg commit -u jiakai
+	hg push
 

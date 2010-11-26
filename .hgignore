@@ -1,3 +1,4 @@
 kernel/hda.img
 kernel/obj
 kernel/kernel.bin
+kernel/root

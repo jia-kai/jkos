@@ -1,7 +1,6 @@
-/* multiboot.h - Multiboot header file. */
 /*
  * $File: multiboot.h
- * $Date: Thu Nov 25 21:43:51 2010 +0800
+ * $Date: Fri Nov 26 11:23:33 2010 +0800
  */
 /* Copyright (C) 1999,2003,2007,2008,2009  Free Software Foundation, Inc.
  *

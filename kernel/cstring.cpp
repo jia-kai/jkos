@@ -1,8 +1,8 @@
 /*
- * $File: kernel.cpp
- * $Date: Fri Nov 26 20:40:27 2010 +0800
+ * $File: cstring.cpp
+ * $Date: Fri Nov 26 20:31:42 2010 +0800
  *
- * This file is the main routine of JKOS kernel
+ * functions for manipulating C-style strings
  */
 /*
 This file is part of JKOS
@@ -23,26 +23,40 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <multiboot.h>
-#include <scio.h>
+#include <cstring.h>
 
-extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
+void memset(void *dest, int val, int cnt)
 {
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-   {
-	   Scio::printf("invalid magic: 0x%x\n", magic);
-	   return;
-   }
+	asm volatile
+	(
+		"cld\n"
+		"rep stosb" : :
+		"D"(dest), "a"(val), "c"(cnt)
+	);
+}
 
-   Scio::printf("hello, world!\n");
-   for (int volatile i = 0; i < 100000000; i ++);
- 
-   for (int i = 1; i < 100; i ++)
-   {
-	   Scio::printf("%s :%d\n", "hello, world!", i);
-	   Scio::printf("int: 0x%x %u\n", i, i * 2);
-	   Scio::printf("char: %c %%\n", 'X');
-	   Scio::printf("double: %f\ndone", 31.41592653589793 / i);
-   }
+void memcpy(void *dest, const void *src, int cnt)
+{
+	asm volatile
+	(
+		"cld\n"
+		"rep movsb" : :
+		"D"(dest), "S"(src), "c"(cnt)
+	);
+}
+
+char *strcpy(char *dest, const char *src)
+{
+	asm volatile
+	(
+		"1:\n"
+		"lodsb\n"
+		"stosb\n"
+		"cmp $0, %%al\n"
+		"jne 1b" : :
+		"D"(dest), "S"(src) :
+		"al"
+	);
+	return (char*)dest;
 }
 

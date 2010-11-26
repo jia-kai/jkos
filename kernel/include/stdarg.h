@@ -1,8 +1,6 @@
 /*
- * $File: kernel.cpp
- * $Date: Fri Nov 26 20:40:27 2010 +0800
- *
- * This file is the main routine of JKOS kernel
+ * $File: stdarg.h
+ * $Date: Fri Nov 26 20:35:57 2010 +0800
  */
 /*
 This file is part of JKOS
@@ -23,26 +21,14 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <multiboot.h>
-#include <scio.h>
 
-extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
-{
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-   {
-	   Scio::printf("invalid magic: 0x%x\n", magic);
-	   return;
-   }
+#ifndef HEADER_STDARG
+#define HEADER_STDARG
 
-   Scio::printf("hello, world!\n");
-   for (int volatile i = 0; i < 100000000; i ++);
- 
-   for (int i = 1; i < 100; i ++)
-   {
-	   Scio::printf("%s :%d\n", "hello, world!", i);
-	   Scio::printf("int: 0x%x %u\n", i, i * 2);
-	   Scio::printf("char: %c %%\n", 'X');
-	   Scio::printf("double: %f\ndone", 31.41592653589793 / i);
-   }
-}
+#define va_start(v,l) __builtin_va_start(v,l)
+#define va_arg(v,l)   __builtin_va_arg(v,l)
+#define va_end(v)     __builtin_va_end(v)
+#define va_copy(d,s)  __builtin_va_copy(d,s)
+typedef __builtin_va_list va_list;
 
+#endif

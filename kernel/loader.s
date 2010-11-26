@@ -1,4 +1,9 @@
-# setting up the Multiboot header - see GRUB docs for details
+# $File: loader.s
+# $Date: Fri Nov 26 11:21:38 2010 +0800
+#
+# this file is used for setting up the Multiboot header - see GRUB docs for details
+# Reference: http://wiki.osdev.org/Bare_bones
+
 ALIGN	=	1 << 0		# align loaded modules on page boundaries
 MEMINFO	=	1 << 1		# provide memory map
 FLAGS	=	ALIGN | MEMINFO		# this is the Multiboot 'flag' field

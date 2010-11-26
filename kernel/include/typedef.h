@@ -1,8 +1,8 @@
 /*
- * $File: kernel.cpp
- * $Date: Fri Nov 26 20:40:27 2010 +0800
+ * $File: typedef.h
+ * $Date: Fri Nov 26 19:36:08 2010 +0800
  *
- * This file is the main routine of JKOS kernel
+ * type definitions
  */
 /*
 This file is part of JKOS
@@ -23,26 +23,19 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <multiboot.h>
-#include <scio.h>
+#ifndef HEADER_TYPEDEF
+#define HEADER_TYPEDEF
 
-extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
-{
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-   {
-	   Scio::printf("invalid magic: 0x%x\n", magic);
-	   return;
-   }
+typedef char Int8_t;
+typedef unsigned char Uint8_t;
+typedef short int Int16_t;
+typedef unsigned short int Uint16_t;
+typedef int Int32_t;
+typedef unsigned int Uint32_t;
+typedef long long int Int64_t;
+typedef unsigned long long int Uint64_t;
 
-   Scio::printf("hello, world!\n");
-   for (int volatile i = 0; i < 100000000; i ++);
- 
-   for (int i = 1; i < 100; i ++)
-   {
-	   Scio::printf("%s :%d\n", "hello, world!", i);
-	   Scio::printf("int: 0x%x %u\n", i, i * 2);
-	   Scio::printf("char: %c %%\n", 'X');
-	   Scio::printf("double: %f\ndone", 31.41592653589793 / i);
-   }
-}
+#define NULL 0
+
+#endif // HEADER_TYPEDEF
 
