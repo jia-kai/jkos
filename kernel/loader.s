@@ -1,5 +1,5 @@
 # $File: loader.s
-# $Date: Fri Nov 26 11:21:38 2010 +0800
+# $Date: Sat Nov 27 20:24:36 2010 +0800
 #
 # this file is used for setting up the Multiboot header - see GRUB docs for details
 # Reference: http://wiki.osdev.org/Bare_bones
@@ -15,7 +15,7 @@ CHECKSUM	=	-(MAGIC + FLAGS)	# checksum required
 .long FLAGS
 .long CHECKSUM
 
-.global loader
+.global loader, gdt_flush, idt_flush
 
 # reserve initial kernel stack space
 STACKSIZE	=	0x4000			# that is, 16k.
@@ -54,4 +54,31 @@ loader:
 	hang:
 	   hlt					# halt machine if kernel return
 	   jmp   hang
+
+
+# load the GDT
+# this function is called in descriptor_table.cpp
+# argument: address of GDT ptr
+gdt_flush:
+	mov 4(%esp), %eax
+	lgdt (%eax)
+
+	mov $0x10, %ax		# 0x10 is the offset of kernel data segment in the GDT
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %fs
+	mov %ax, %gs
+	mov %ax, %ss
+	jmp $0x08, $1f		# 0x08 is the offset of kernel code segment in the GDT
+1:
+	ret
+
+
+# load the IDT
+# this function is called in descriptor_table.cpp
+# argument: address of IDT ptr
+idt_flush:
+	mov 4(%esp), %eax
+	lidt (%eax)
+	ret
 

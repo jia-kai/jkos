@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Fri Nov 26 20:47:33 2010 +0800
+ * $Date: Sat Nov 27 16:33:24 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -44,29 +44,23 @@ inline static void move_cursor();
 
 static const char *u2s(unsigned n, int base);
 
-class _Scio_init
+void Scio::init()
 {
-public:
-	_Scio_init()
+	char c = (*(volatile Uint16_t*)0x410) & 0x30;
+	if (c == 0x30)
 	{
-		using namespace Scio;
-		char c = (*(volatile Uint16_t*)0x410) & 0x30;
-		if (c == 0x30)
-		{
-			videomem = (Uint8_t*)0xB0000;
-			video_monochrome = true;
-		} else
-		{
-			videomem = (Uint8_t*)0xB8000;
-			video_monochrome = false;
-		}
-		push_color(LIGHT_GRAY, BLACK);
-		cls();
-		Scio::printf("vido mode: %s\n", video_monochrome ? "monochrome" : "color");
+		videomem = (Uint8_t*)0xB0000;
+		video_monochrome = true;
+	} else
+	{
+		videomem = (Uint8_t*)0xB8000;
+		video_monochrome = false;
 	}
-};
+	push_color(LIGHT_GRAY, BLACK);
+	cls();
+	printf("video intialized. mode: %s\n", video_monochrome ? "monochrome" : "color");
+}
 
-static _Scio_init _scio_init;
 
 void Scio::push_color(Color_t forecolor, Color_t backcolor)
 {
@@ -197,8 +191,13 @@ void Scio::cls()
 
 void putc(int ch)
 {
-	if (ch == '\r' || ch < 0 || ch >= 128)
+	if (ch < 0 || ch >= 128)
 		return;
+	if (ch == '\r')
+	{
+		xpos = 0;
+		return;
+	}
 	if (ch != '\n')
 	{
 		int p = (xpos + ypos * NCOL) * 2;

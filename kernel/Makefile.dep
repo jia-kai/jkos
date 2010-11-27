@@ -1,5 +1,10 @@
 obj/cstring.o: cstring.cpp include/cstring.h
-obj/kernel.o: kernel.cpp include/multiboot.h include/scio.h
+obj/descriptor_table.o: descriptor_table.cpp include/descriptor_table.h \
+ include/typedef.h include/cstring.h
+obj/isr.o: isr.cpp include/typedef.h include/scio.h
+obj/main.o: main.cpp include/multiboot.h include/scio.h \
+ include/descriptor_table.h include/typedef.h
 obj/scio.o: scio.cpp include/typedef.h include/scio.h include/cstring.h \
  include/stdarg.h include/port.h
+obj/interrupt.o: interrupt.s
 obj/loader.o: loader.s

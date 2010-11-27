@@ -1,6 +1,6 @@
 /*
  * $File: scio.h
- * $Date: Fri Nov 26 19:03:40 2010 +0800
+ * $Date: Sat Nov 27 20:19:12 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -35,8 +35,8 @@ namespace Scio
 	 */
 	extern void printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
-	extern void cls();
 	// clear screen
+	extern void cls();
 
 	enum Color_t
 	{
@@ -45,14 +45,18 @@ namespace Scio
 		DARK_GRAY, LIGHT_BLUE, LIGHT_GREEN, LIGHT_CYAN,
 		LIGHT_RED, LIGHT_MAGENTA, LIGHT_BROWN, WHITE
 	};
-	extern void push_color(Color_t forecolor, Color_t backcolor);
+
 	// push the color onto the color stack
 	// the color used is the top of the color stack
 	// Note: if the stack is full, the top will be replaced
+	extern void push_color(Color_t forecolor, Color_t backcolor);
 
-	extern void pop_color();
 	// pop the color stack
 	// Note: if there is only one color in the stack, nothing happens
+	extern void pop_color();
+
+	// initialize and call cls()
+	extern void init();
 }
 
 #endif // HEADER_SCIO

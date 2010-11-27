@@ -1,6 +1,6 @@
 /*
- * $File: kernel.cpp
- * $Date: Fri Nov 26 20:40:27 2010 +0800
+ * $File: main.cpp
+ * $Date: Sat Nov 27 21:05:13 2010 +0800
  *
  * This file is the main routine of JKOS kernel
  */
@@ -25,24 +25,32 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <multiboot.h>
 #include <scio.h>
+#include <descriptor_table.h>
 
 extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 {
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-   {
-	   Scio::printf("invalid magic: 0x%x\n", magic);
-	   return;
-   }
+	init_descriptor_tables();
+	Scio::init();
 
-   Scio::printf("hello, world!\n");
-   for (int volatile i = 0; i < 100000000; i ++);
- 
-   for (int i = 1; i < 100; i ++)
-   {
-	   Scio::printf("%s :%d\n", "hello, world!", i);
-	   Scio::printf("int: 0x%x %u\n", i, i * 2);
-	   Scio::printf("char: %c %%\n", 'X');
-	   Scio::printf("double: %f\ndone", 31.41592653589793 / i);
-   }
+	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+	{
+		Scio::printf("invalid magic: 0x%x\n", magic);
+		return;
+	}
+
+	asm volatile ("int $0x08");
+	asm volatile ("int $0x09");
+	asm volatile ("int $0x08");
+
+	Scio::printf("hello, world!\n");
+	for (int volatile i = 0; i < 100000000; i ++);
+
+	for (int i = 1; i < 100; i ++)
+	{
+		Scio::printf("%s :%d\n", "hello, world!", i);
+		Scio::printf("int: 0x%x %u\n", i, i * 2);
+		Scio::printf("char: %c %%\n", 'X');
+		Scio::printf("double: %f\ndone", 31.41592653589793 / i);
+	}
 }
 
