@@ -1,6 +1,6 @@
 /*
  * $File: port.h
- * $Date: Fri Nov 26 18:37:00 2010 +0800
+ * $Date: Sun Nov 28 10:53:17 2010 +0800
  *
  * functions for doing port I/O
  */
@@ -40,6 +40,13 @@ namespace Port
 		Uint8_t ret;
 		asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
 		return ret;
+	}
+
+	static inline void wait()
+	{
+		asm volatile("outb %%al, $0x80" : : "a"(0));
+		// port 0x80 is used for 'checkpoints' during POST.
+		// linux kernel seems to think it's free for use :-/
 	}
 }
 

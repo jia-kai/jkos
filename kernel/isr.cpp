@@ -1,6 +1,6 @@
 /*
  * $File: isr.cpp
- * $Date: Sat Nov 27 21:18:04 2010 +0800
+ * $Date: Sun Nov 28 20:17:13 2010 +0800
  *
  * interrupt service routines
  *
@@ -27,6 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <typedef.h>
+#include <port.h>
 #include <scio.h>
 
 struct Isr_registers_t
@@ -41,5 +42,16 @@ struct Isr_registers_t
 extern "C" void isr_handler(Isr_registers_t reg)
 {
 	Scio::printf("interrupt: 0x%x\n", reg.int_no);
+}
+
+extern "C" void irq_handler(Isr_registers_t reg)
+{
+	static int tick = 0;
+	Scio::printf("%dth IRQ: %d\n", ++ tick, reg.int_no - 32);
+
+	// send an EOI (end of interrupt) signal to the PICs
+	if (reg.int_no >= 40)
+		Port::outb(0xA0, 0x20); // send reset signal to slave
+	Port::outb(0x20, 0x20); // send reset signal to master
 }
 

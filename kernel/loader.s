@@ -1,14 +1,37 @@
 # $File: loader.s
-# $Date: Sat Nov 27 20:24:36 2010 +0800
+# $Date: Sun Nov 28 20:04:20 2010 +0800
 #
-# this file is used for setting up the Multiboot header - see GRUB docs for details
-# Reference: http://wiki.osdev.org/Bare_bones
+# Multiboot loader (doc: http://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
+#
+# modified from http://wiki.osdev.org/C%2B%2B_Bare_Bones
+# 
+
+#
+# This file is part of JKOS
+# 
+# Copyright (C) <2010>  Jiakai <jia.kai66@gmail.com>
+# 
+# JKOS is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# JKOS is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
+# 
 
 ALIGN	=	1 << 0		# align loaded modules on page boundaries
 MEMINFO	=	1 << 1		# provide memory map
 FLAGS	=	ALIGN | MEMINFO		# this is the Multiboot 'flag' field
 MAGIC	=	0x1BADB002			# 'magic number' lets bootloader find the header
 CHECKSUM	=	-(MAGIC + FLAGS)	# checksum required
+
+.text
 
 .balign 4
 .long MAGIC

@@ -1,5 +1,5 @@
 # $File: interrupt.s
-# $Date: Sat Nov 27 21:05:01 2010 +0800
+# $Date: Sun Nov 28 19:08:52 2010 +0800
 #
 # asm functions for handling interrupts
 #
@@ -26,6 +26,8 @@
 # along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
+IRQ_ERR_CODE = 0
+
 .global isr8, isr9
 
 isr8:
@@ -44,10 +46,11 @@ isr9:
 isr_common_stub:
 	pusha
 
+	xor %eax, %eax
 	mov %ds, %ax
 	push %eax
 
-	mov $0x10, %ax
+	mov $0x10, %ax		# kernel data segment
 	mov %ax, %ds
 	mov %ax, %es
 	mov %ax, %fs
@@ -62,7 +65,47 @@ isr_common_stub:
 	mov %ax, %gs
 
 	popa
-	add $8, %esp
+	add $8, %esp		# clean pushed error code and interrupt number
+	sti
+	iret
+
+
+.macro IRQ inum
+	.global irq\inum
+	irq\inum:
+		cli
+		pushl $IRQ_ERR_CODE
+		pushl $\inum + 32	# interrupt number
+		jmp irq_common_stub
+.endm
+
+.irp n,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+	IRQ \n
+.endr
+
+irq_common_stub:
+	pusha
+
+	xor %eax, %eax
+	mov %ds, %ax
+	push %eax
+
+	mov $0x10, %ax		# kernel data segment
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %fs
+	mov %ax, %gs
+
+	call irq_handler	# in isr.cpp
+
+	pop %eax
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %fs
+	mov %ax, %gs
+
+	popa
+	add $8, %esp		# clean pushed error code and interrupt number
 	sti
 	iret
 
