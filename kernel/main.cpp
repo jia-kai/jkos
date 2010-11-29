@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Nov 29 19:34:44 2010 +0800
+ * $Date: Mon Nov 29 21:55:20 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -32,6 +32,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 static void init_timer();
 static void timer_tick(Isr_registers_t reg);
+static void isr_kbd(Isr_registers_t reg);
 
 extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 {
@@ -46,6 +47,7 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	}
 
 	init_timer();
+	isr_register(ISR_GET_NUM_BY_IRQ(1), isr_kbd);
 
 	asm volatile ("sti");
 
@@ -56,8 +58,8 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 
 	Scio::printf("hello, world!\n");
 
-	volatile int *ptr = (int*)0xF000000F;
-	*ptr = 0;
+	// volatile int *ptr = (int*)0xF000000F;
+	// *ptr = 0;
 
 	for (; ;);
 }
@@ -81,6 +83,15 @@ void timer_tick(Isr_registers_t reg)
 	if (tick % 100 == 0)
 		Scio::printf("timer tick %d\n", tick);
 	tick ++;
+	isr_eoi(reg.int_no);
+}
+
+void isr_kbd(Isr_registers_t reg)
+{
+	Uint8_t code = Port::inb(0x60);
+
+	Scio::printf("keyboard scancode: 0x%x\n", code);
+
 	isr_eoi(reg.int_no);
 }
 
