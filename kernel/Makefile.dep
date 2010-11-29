@@ -1,10 +1,13 @@
 obj/cstring.o: cstring.cpp include/cstring.h
 obj/descriptor_table.o: descriptor_table.cpp include/descriptor_table.h \
- include/typedef.h include/cstring.h include/port.h
-obj/isr.o: isr.cpp include/typedef.h include/port.h include/scio.h
+ include/common.h include/cstring.h include/port.h include/scio.h
+obj/kheap.o: kheap.cpp include/kheap.h include/common.h
 obj/main.o: main.cpp include/multiboot.h include/scio.h \
- include/descriptor_table.h include/typedef.h include/port.h
-obj/scio.o: scio.cpp include/typedef.h include/scio.h include/cstring.h \
+ include/descriptor_table.h include/common.h include/port.h \
+ include/page.h
+obj/page.o: page.cpp include/page.h include/common.h include/scio.h \
+ include/cstring.h include/kheap.h include/descriptor_table.h
+obj/scio.o: scio.cpp include/common.h include/scio.h include/cstring.h \
  include/stdarg.h include/port.h
 obj/interrupt.o: interrupt.s
 obj/loader.o: loader.s

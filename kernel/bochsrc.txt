@@ -1,0 +1,6 @@
+megs: 32
+boot: a
+mouse: enabled=0
+clock: sync=realtime
+ata0-master: type=disk, path=hda.img, mode=flat
+boot: disk

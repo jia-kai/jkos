@@ -1,8 +1,8 @@
 /*
- * $File: port.h
- * $Date: Sun Nov 28 10:53:17 2010 +0800
+ * $File: common.h
+ * $Date: Mon Nov 29 18:53:52 2010 +0800
  *
- * functions for doing port I/O
+ * some common definitions
  */
 /*
 This file is part of JKOS
@@ -23,32 +23,23 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_PORT
-#define HEADER_PORT
+#ifndef HEADER_COMMON
+#define HEADER_COMMON
 
-#include <common.h>
+typedef char Int8_t;
+typedef unsigned char Uint8_t;
+typedef short int Int16_t;
+typedef unsigned short int Uint16_t;
+typedef int Int32_t;
+typedef unsigned int Uint32_t;
+typedef long long int Int64_t;
+typedef unsigned long long int Uint64_t;
 
-namespace Port
-{
-	static inline void outb(Uint16_t port, Uint8_t val)
-	{
-		asm volatile("outb %0, %1" : : "a"(val), "Nd" (port));
-	}
+#define NULL 0
 
-	static inline Uint8_t inb(Uint16_t port)
-	{
-		Uint8_t ret;
-		asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-		return ret;
-	}
+static const int
+	CLOCK_TICK_RATE	=	1193180,
+	KERNEL_HZ		=	50;
 
-	static inline void wait()
-	{
-		asm volatile("outb %%al, $0x80" : : "a"(0));
-		// port 0x80 is used for 'checkpoints' during POST.
-		// linux kernel seems to think it's free for use :-/
-	}
-}
-
-#endif // HEADER_PORT
+#endif
 

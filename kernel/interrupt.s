@@ -1,5 +1,5 @@
 # $File: interrupt.s
-# $Date: Sun Nov 28 19:08:52 2010 +0800
+# $Date: Mon Nov 29 18:36:50 2010 +0800
 #
 # asm functions for handling interrupts
 #
@@ -26,86 +26,57 @@
 # along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-IRQ_ERR_CODE = 0
+.comm isr_callback_table, 256 * 4
 
-.global isr8, isr9
-
-isr8:
-	cli
-	pushl $0	# err_code
-	pushl $0x08	# int_no
-	jmp isr_common_stub
-
-isr9:
-	cli
-	pushl $1	# err_code
-	pushl $0x09	# int_no
-	jmp isr_common_stub
-
-
-isr_common_stub:
-	pusha
-
-	xor %eax, %eax
-	mov %ds, %ax
-	push %eax
-
-	mov $0x10, %ax		# kernel data segment
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
-
-	call isr_handler	# in isr.cpp
-
-	pop %eax
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
-
-	popa
-	add $8, %esp		# clean pushed error code and interrupt number
-	sti
-	iret
-
-
-.macro IRQ inum
-	.global irq\inum
-	irq\inum:
+.macro ISR int, err_code
+	.global isr\int
+	isr\int :
 		cli
-		pushl $IRQ_ERR_CODE
-		pushl $\inum + 32	# interrupt number
-		jmp irq_common_stub
+		.if \err_code == 0
+			pushl $0
+		.endif
+		pushl $\int
+		pusha
+
+		xor %eax, %eax
+		mov %ds, %ax
+		push %eax
+
+		mov $0x10, %ax		# kernel data segment
+		mov %ax, %ds
+		mov %ax, %es
+		mov %ax, %fs
+		mov %ax, %gs
+
+		movl $isr_callback_table, %eax
+		movl 4*\int(%eax), %eax
+		call *%eax
+
+		pop %eax
+		mov %ax, %ds
+		mov %ax, %es
+		mov %ax, %fs
+		mov %ax, %gs
+
+		popa
+		add $8, %esp		# clear pushed error code and interrupt number
+		sti
+		iret
 .endm
 
-.irp n,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-	IRQ \n
+# ISR without error code
+.irp n,0,1,2,3,4,5,6,7,9,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31
+	ISR \n, 0
 .endr
 
-irq_common_stub:
-	pusha
+# ISR with error code
+.irp n,8,10,11,12,13,14
+	ISR \n, 1
+.endr
 
-	xor %eax, %eax
-	mov %ds, %ax
-	push %eax
 
-	mov $0x10, %ax		# kernel data segment
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
-
-	call irq_handler	# in isr.cpp
-
-	pop %eax
-	mov %ax, %ds
-	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
-
-	popa
-	add $8, %esp		# clean pushed error code and interrupt number
-	sti
-	iret
+# IRQ
+.irp n,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47
+	ISR \n, 0
+.endr
 

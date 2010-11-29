@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Sun Nov 28 20:18:09 2010 +0800
+ * $Date: Mon Nov 29 18:35:27 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -29,13 +29,19 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <descriptor_table.h>
 #include <cstring.h>
 #include <port.h>
+#include <scio.h>
 
-// these two functions are defined in loader.s
+// defined in loader.s
 extern "C" void gdt_flush(Uint32_t);
 extern "C" void idt_flush(Uint32_t);
 
+// defined in interrupt.s
+extern "C" Uint32_t isr_callback_table[256];
+
 static void init_gdt();
 static void init_idt();
+extern "C" void isr_unhandled(Isr_registers_t reg);
+
 /*
 arguments:
 	offset1 - vector offset for master PIC
@@ -44,26 +50,20 @@ arguments:
 */
 static void remap_PIC(int offset1, int offset2);
 
-// defined in interrupt.s
-extern "C" void isr8();
-extern "C" void isr9();
+#define LOOP_ALL_INTERRUPT(func) \
+	func(0); func(1); func(2); func(3); func(4); func(5); func(6); func(7); \
+	func(8); func(9); func(10); func(11); func(12); func(13); func(14); func(15); \
+	func(16); func(17); func(18); func(19); func(20); func(21); func(22); func(23); \
+	func(24); func(25); func(26); func(27); func(28); func(29); func(30); func(31); \
+	func(32); func(33); func(34); func(35); func(36); func(37); func(38); func(39); \
+	func(40); func(41); func(42); func(43); func(44); func(45); func(46); func(47);
 
-extern "C" void irq0();
-extern "C" void irq1();
-extern "C" void irq2();
-extern "C" void irq3();
-extern "C" void irq4();
-extern "C" void irq5();
-extern "C" void irq6();
-extern "C" void irq7();
-extern "C" void irq8();
-extern "C" void irq9();
-extern "C" void irq10();
-extern "C" void irq11();
-extern "C" void irq12();
-extern "C" void irq13();
-extern "C" void irq14();
-extern "C" void irq15();
+#define EXTERN_ISR(n) \
+	extern "C" void isr##n()
+
+LOOP_ALL_INTERRUPT(EXTERN_ISR)
+
+#undef EXTERN_ISR
 
 void init_descriptor_tables()
 {
@@ -109,23 +109,39 @@ void init_idt()
 	const Uint32_t
 		IDT_SEL = 0x08,
 		IDT_FLAG = 0b10001110;
-	for (int i = 0; i < 32; i ++)
-		idt_entries[i].set((Uint32_t)isr8, IDT_SEL, IDT_FLAG);
-	idt_entries[9].set((Uint32_t)isr9, IDT_SEL, IDT_FLAG);
+
+	for (int i = 0; i < 256; i ++)
+		if (!isr_callback_table[i])
+			isr_callback_table[i] = (Uint32_t)isr_unhandled;
 
 	remap_PIC(32, 40);
 
-#define ADD_IRQ(n) \
-	idt_entries[32 + n].set((Uint32_t)irq##n, IDT_SEL, IDT_FLAG)
+#define ADD_ISR(n) \
+	idt_entries[n].set((Uint32_t)isr##n, IDT_SEL, IDT_FLAG)
 
-	ADD_IRQ(0); ADD_IRQ(1); ADD_IRQ(2); ADD_IRQ(3);
-	ADD_IRQ(4); ADD_IRQ(5); ADD_IRQ(6); ADD_IRQ(7);
-	ADD_IRQ(8); ADD_IRQ(9); ADD_IRQ(10); ADD_IRQ(11);
-	ADD_IRQ(12); ADD_IRQ(13); ADD_IRQ(14); ADD_IRQ(15);
+	LOOP_ALL_INTERRUPT(ADD_ISR)
 
 #undef ADD_IRQ
 
 	idt_flush((Uint32_t)&idt_ptr);
+}
+
+void isr_register(int num, Isr_t callback)
+{
+	if (num >= 0 && num < 256)
+		isr_callback_table[num] = (Uint32_t)callback;
+}
+
+void isr_unhandled(Isr_registers_t reg)
+{
+	Scio::printf("unhandled interrupt: int_no=0x%x  err_code=0x%x\n",
+			reg.int_no, reg.err_code);
+
+	if (reg.int_no >= 32 && reg.int_no <= 47)
+	{
+		// unhandled IRQ interrupt
+		isr_eoi(reg.int_no);
+	}
 }
 
 void GDT_entry_t::set(Uint32_t base, Uint32_t limit, Uint8_t access, Uint8_t flag)
@@ -201,5 +217,12 @@ void remap_PIC(int offset1, int offset2)
 
 	outb(PIC1_DATA, a1);   // restore saved masks.
 	outb(PIC2_DATA, a2);
+}
+
+void isr_eoi(int int_no)
+{
+	if (int_no >= 40)
+		Port::outb(PIC2_COMMAND, 0x20); // send reset signal to slave
+	Port::outb(PIC1_COMMAND, 0x20); // send reset signal to master
 }
 

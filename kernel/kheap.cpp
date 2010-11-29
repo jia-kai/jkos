@@ -1,8 +1,8 @@
 /*
- * $File: typedef.h
- * $Date: Fri Nov 26 19:36:08 2010 +0800
+ * $File: kheap.cpp
+ * $Date: Mon Nov 29 11:36:14 2010 +0800
  *
- * type definitions
+ * manipulate kernel heap
  */
 /*
 This file is part of JKOS
@@ -23,19 +23,26 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_TYPEDEF
-#define HEADER_TYPEDEF
+#include <kheap.h>
 
-typedef char Int8_t;
-typedef unsigned char Uint8_t;
-typedef short int Int16_t;
-typedef unsigned short int Uint16_t;
-typedef int Int32_t;
-typedef unsigned int Uint32_t;
-typedef long long int Int64_t;
-typedef unsigned long long int Uint64_t;
+// defined in the linker script
+extern "C" Uint32_t kernel_img_end;
 
-#define NULL 0
+static Uint32_t kheap_end = ((Uint32_t)&kernel_img_end) + 1;
 
-#endif // HEADER_TYPEDEF
+Uint32_t kmalloc(Uint32_t size, int palign, Uint32_t *phyaddr)
+{
+	kheap_end = (((kheap_end - 1) >> palign) + 1) << palign;
+	if (*phyaddr)
+		*phyaddr = kheap_end;
+
+	Uint32_t ret = kheap_end;
+	kheap_end += size;
+	return ret;
+}
+
+Uint32_t kheap_get_mem_size()
+{
+	return kheap_end;
+}
 

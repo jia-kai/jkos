@@ -1,5 +1,5 @@
 # $File: loader.s
-# $Date: Sun Nov 28 20:04:20 2010 +0800
+# $Date: Mon Nov 29 18:22:59 2010 +0800
 #
 # Multiboot loader (doc: http://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 #
@@ -45,6 +45,7 @@ STACKSIZE	=	0x4000			# that is, 16k.
 .comm stack, STACKSIZE, 32		# reserve 16k stack on a quadword boundary
 
 loader:
+	cli
 	mov $(stack + STACKSIZE), %esp	# set up the stack
 	push %eax						# Multiboot magic number
 	push %ebx						# Multiboot data structure

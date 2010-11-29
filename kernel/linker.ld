@@ -1,6 +1,6 @@
 /*
  * $File: linker.ld
- * $Date: Sun Nov 28 20:01:18 2010 +0800
+ * $Date: Mon Nov 29 14:51:44 2010 +0800
  *
  * the linker script
  *
@@ -68,11 +68,13 @@ SECTIONS
 		*(.bss*)
 		*(.gnu.linkonce.b*)
 	}
+
+	kernel_img_end = .;
 	
-	 /DISCARD/ :
-	 {
+	/DISCARD/ :
+	{
 		*(.comment)
 		*(.eh_frame) /* You should discard this unless you're implementing runtime support for C++ exceptions. */
-	 }
+	}
 }
 

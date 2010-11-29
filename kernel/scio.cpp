@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Sat Nov 27 16:33:24 2010 +0800
+ * $Date: Mon Nov 29 19:15:54 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <typedef.h>
+#include <common.h>
 #include <scio.h>
 #include <cstring.h>
 #include <stdarg.h>
@@ -244,7 +244,7 @@ const char *u2s(unsigned n, int base)
 	{
 		int d = n % base;
 		n /= base;
-		ret[len ++] = d < 10 ? '0' + d : 'a' + d;
+		ret[len ++] = d < 10 ? '0' + d : 'a' + d - 10;
 	}
 	for (int i = len / 2 - 1; i >= 0; i --)
 	{
