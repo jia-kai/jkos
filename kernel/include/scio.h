@@ -1,6 +1,6 @@
 /*
  * $File: scio.h
- * $Date: Mon Nov 29 19:29:18 2010 +0800
+ * $Date: Wed Dec 01 19:17:03 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -34,6 +34,11 @@ namespace Scio
 	 *	s, x, d, u, c, %, f
 	 */
 	extern void printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+	extern void puts(const char *str);
+
+#ifdef HEADER_STDARG
+	extern void vprintf(const char *fmt, va_list argp);
+#endif
 
 	// clear screen
 	extern void cls();
@@ -58,16 +63,6 @@ namespace Scio
 	// initialize and call cls()
 	extern void init();
 }
-
-// report kernel panic and fall into infinite loop
-#define PANIC(_msg_) \
-do \
-{ \
-	Scio::printf("PANIC(%s) at %s:%s:%d\n", _msg_, __FILE__, __PRETTY_FUNCTION__, __LINE__); \
-	asm volatile ("cli"); \
-	for (; ;); \
-} while (0)
-
 
 #endif // HEADER_SCIO
 

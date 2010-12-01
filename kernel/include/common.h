@@ -1,8 +1,8 @@
 /*
  * $File: common.h
- * $Date: Mon Nov 29 18:53:52 2010 +0800
+ * $Date: Wed Dec 01 20:36:51 2010 +0800
  *
- * some common definitions
+ * some common definitions and functions
  */
 /*
 This file is part of JKOS
@@ -37,9 +37,26 @@ typedef unsigned long long int Uint64_t;
 
 #define NULL 0
 
+extern void _panic_func(const char *file, const char *func, int line,
+		const char *fmt, ...) __attribute__((format(printf, 4, 5), noreturn));
+
+#define panic(fmt, args...)  _panic_func(__FILE__, __PRETTY_FUNCTION__, __LINE__, fmt, ## args)
+
+#ifdef DEBUG
+extern void _kassert_failed(const char *statement, const char *file, int line) __attribute__((noreturn));
+#	define kassert(s) \
+	do \
+	{ \
+		if (!(s)) \
+			_kassert_failed(# s, __FILE__, __LINE__); \
+	} while (0)
+#else
+#	define kassert(s) 
+#endif
+
 static const int
 	CLOCK_TICK_RATE	=	1193180,
 	KERNEL_HZ		=	50;
 
-#endif
+#endif // HEADER_COMMON
 

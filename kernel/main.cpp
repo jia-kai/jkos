@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Nov 29 21:55:20 2010 +0800
+ * $Date: Wed Dec 01 20:47:36 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */

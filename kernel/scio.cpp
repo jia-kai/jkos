@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Mon Nov 29 19:15:54 2010 +0800
+ * $Date: Wed Dec 01 20:42:29 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -24,9 +24,9 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <common.h>
+#include <stdarg.h>
 #include <scio.h>
 #include <cstring.h>
-#include <stdarg.h>
 #include <port.h>
 
 const int COLOR_STACK_SIZE = 32,
@@ -39,8 +39,8 @@ static Uint8_t color_stack[COLOR_STACK_SIZE];
 static int ncolor_stack,
 		   xpos, ypos;
 
-inline static void putc(int ch);
-inline static void move_cursor();
+static inline void putc(int ch);
+static inline void move_cursor();
 
 static const char *u2s(unsigned n, int base);
 
@@ -83,7 +83,19 @@ void Scio::printf(const char *fmt, ...)
 {
 	va_list argp;
 	va_start(argp, fmt);
+	vprintf(fmt, argp);
+	va_end(argp);
+}
 
+void Scio::puts(const char *str)
+{
+	while (*str)
+		putc(*(str ++));
+	move_cursor();
+}
+
+void Scio::vprintf(const char *fmt, va_list argp)
+{
 	static char buf_mem[128];
 	const char *buf;
 
@@ -170,13 +182,11 @@ void Scio::printf(const char *fmt, ...)
 
 			while (*buf)
 				putc(*(buf ++));
+
 		} else putc(*fmt);
 		fmt ++;
 	}
-
 	move_cursor();
-
-	va_end(argp);
 }
 
 void Scio::cls()

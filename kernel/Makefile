@@ -7,7 +7,7 @@ AS = as
 
 INCLUDE_DIR = -I include
 CXXFLAGS = -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
-		   -fno-stack-protector $(INCLUDE_DIR) -g 
+		   -fno-stack-protector $(INCLUDE_DIR) -g -DDEBUG
 OBJ_DIR = obj
 
 hda.img: kernel.bin

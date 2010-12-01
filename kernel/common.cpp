@@ -1,8 +1,8 @@
 /*
- * $File: kheap.h
- * $Date: Wed Dec 01 17:23:46 2010 +0800
+ * $File: common.cpp
+ * $Date: Wed Dec 01 20:45:20 2010 +0800
  *
- * manipulate kernel heap (virtual memory)
+ * some common definitions and functions
  */
 /*
 This file is part of JKOS
@@ -23,25 +23,28 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_KHEAP
-#define HEADER_KHEAP
-
 #include <common.h>
+#include <stdarg.h>
+#include <scio.h>
 
-/*
- * allocate a chunk of memory in the kernel heap
- * @size: size in byte
- * @palign: the returned address will be aligned on 2^@palign byte boundries
- */
-extern void* kmalloc(Uint32_t size, int palign = 0);
+void _panic_func(const char *file, const char *func, int line, const char *fmt, ...)
+{
+	Scio::printf("KERNEL PANIC at %s:%s:%d :\n", file, func, line);
+	va_list ap;
+	va_start(ap, fmt);
+	Scio::vprintf(fmt, ap);
+	va_end(ap);
 
-extern void kfree(void *ptr);
+	asm volatile ("cli");
+	for (; ;);
+}
 
-/*
- * initialize kernel heap (should only be called by Page::init())
- * @start, @size: start address and size of usable virtual memory
- */
-extern void kheap_init(Uint32_t start, Uint32_t size);
+void _kassert_failed(const char *statement, const char *file, int line)
+{
+	Scio::printf("assertion \"%s\" failed at %s:%d\n",
+			statement, file, line);
 
-#endif // HEADER_KHEAP
+	asm volatile ("cli");
+	for (; ;);
+}
 
