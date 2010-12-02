@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Wed Dec 01 20:42:29 2010 +0800
+ * $Date: Thu Dec 02 11:07:14 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -39,7 +39,7 @@ static Uint8_t color_stack[COLOR_STACK_SIZE];
 static int ncolor_stack,
 		   xpos, ypos;
 
-static inline void putc(int ch);
+static inline void putc(char ch);
 static inline void move_cursor();
 
 static const char *u2s(unsigned n, int base);
@@ -70,7 +70,7 @@ void Scio::push_color(Color_t forecolor, Color_t backcolor)
 	if (video_monochrome)
 		color_stack[ncolor_stack ++] = forecolor == backcolor ? 0 : 0x07;
 	else
-		color_stack[ncolor_stack ++] = ((Uint8_t)backcolor) << 4 | ((Uint8_t)forecolor);
+		color_stack[ncolor_stack ++] = (Uint8_t)(((Uint8_t)backcolor) << 4 | ((Uint8_t)forecolor));
 }
 
 void Scio::pop_color()
@@ -131,7 +131,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 					buf = u2s(va_arg(argp, unsigned), 10);
 					break;
 				case 'c':
-					buf_mem[0] = va_arg(argp, int);
+					buf_mem[0] = (char)va_arg(argp, int);
 					buf_mem[1] = 0;
 					buf = buf_mem;
 					break;
@@ -156,7 +156,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 							while (f >= 1)
 							{
 								f /= 10;
-								buf_mem[n ++] = (int)((f - (int)f) * 10) + '0';
+								buf_mem[n ++] = (char)((int)((f - (int)f) * 10) + '0');
 							}
 							f = f1;
 						}
@@ -169,7 +169,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 						buf_mem[n ++] = '.';
 						for (int i = 0; i < FLOAT_PRECESION; i ++)
 						{
-							buf_mem[n ++] = (int)((f - (int)f) * 10) + '0';
+							buf_mem[n ++] = (char)((int)((f - (int)f) * 10) + '0');
 							f *= 10;
 						}
 						buf_mem[n ++] = 0;
@@ -199,9 +199,9 @@ void Scio::cls()
 	}
 }
 
-void putc(int ch)
+void putc(char ch)
 {
-	if (ch < 0 || ch >= 128)
+	if (ch < 0)
 		return;
 	if (ch == '\r')
 	{
@@ -239,9 +239,9 @@ void move_cursor()
 {
 	int pos = ypos * NCOL + xpos;
 	Port::outb(0x3D4, 0x0E);
-	Port::outb(0x3D5, (pos >> 8) & 0xFF);
+	Port::outb(0x3D5, (Uint8_t)((pos >> 8) & 0xFF));
 	Port::outb(0x3D4, 0x0F);
-	Port::outb(0x3D5, pos & 0xFF);
+	Port::outb(0x3D5, (Uint8_t)(pos & 0xFF));
 }
 
 const char *u2s(unsigned n, int base)
@@ -254,7 +254,7 @@ const char *u2s(unsigned n, int base)
 	{
 		int d = n % base;
 		n /= base;
-		ret[len ++] = d < 10 ? '0' + d : 'a' + d - 10;
+		ret[len ++] = (char)(d < 10 ? '0' + d : 'a' + d - 10);
 	}
 	for (int i = len / 2 - 1; i >= 0; i --)
 	{

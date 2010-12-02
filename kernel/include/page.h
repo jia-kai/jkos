@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Mon Nov 29 14:44:45 2010 +0800
+ * $Date: Thu Dec 02 15:44:14 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -90,16 +90,24 @@ namespace Page
 
 		// get the page containing virtual address @addr in this page directory
 		// if the corresponding table does not exist:
-		//		if @make is true, a new table will be allocated, with
-		//			present, rw and user set
+		//		if @make is true, a new table will be allocated
 		//		otherwise NULL is returned
-		Table_entry_t *get_page(Uint32_t addr, bool make);
+		Table_entry_t *get_page(Uint32_t addr, bool make, bool rw = true, bool user = true);
 
 		// load this page directory into the CR3 register
 		void enable();
+
+		// get physical address of virtual address @addr
+		// if the corresponding page does not exist, -1 is returned
+		// if the page has no corresponding frame:
+		//		if @alloc is true, a new frame will be allocated
+		//		otherwise -1 is returned
+		Uint32_t get_physical_addr(Uint32_t addr, bool alloc, bool is_kernel, bool is_writable);
 	};
 
 	void init();
+
+	extern Directory_t *kernel_page_dir;
 }
 
 #endif // HEADER_PAGE

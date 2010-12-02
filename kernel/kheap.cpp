@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Wed Dec 01 20:37:49 2010 +0800
+ * $Date: Thu Dec 02 11:54:29 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -26,6 +26,8 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <rbtree.h>
 #include <common.h>
+
+static Uint32_t kheap_begin, kheap_end;
 
 struct Block_t
 {
@@ -56,7 +58,7 @@ namespace Tree_mm
 		STATIC_SIZE = 1024,
 		TREE_NODE_SIZE = sizeof(Rbt<Block_t>::Node),
 		STATIC_MEM_SIZE = STATIC_SIZE * TREE_NODE_SIZE;
-	static Uint8_t static_mem[STATIC_MEM_SIZE];
+	static Uint8_t static_mem[STATIC_MEM_SIZE] __attribute__((aligned(2)));
 	static void* freed[STATIC_SIZE];
 	static int nstatic_mem, nfreed;
 
@@ -121,47 +123,61 @@ void kfree(void *addr)
 	nblock.start = got.start;
 	nblock.size = got.size;
 
+	Hole_t tmp; // the hole adjacent to newly freed block
+
 	ptr = tree_hole.find_le(got);
 	if (ptr) // try to merge with the left block
+		tmp = ptr->get_key();
+	else
+		tmp.start = kheap_begin, tmp.size = 0;
+	if (tmp.start + tmp.size != nblock.start)
 	{
-		Hole_t tmp = ptr->get_key();
-		if (tmp.start + tmp.size != nblock.start)
-		{
-			Block_t breq;
-			breq.start = tmp.start + tmp.size;
-			breq.size = nblock.start - breq.start;
-			Rbt<Block_t>::Node *p = tree_block.find_ge(breq);
-			kassert(p != NULL && p->get_key() == breq);
+		Block_t breq;
+		breq.start = tmp.start + tmp.size;
+		breq.size = nblock.start - breq.start;
+		Rbt<Block_t>::Node *p = tree_block.find_ge(breq);
+		kassert(p != NULL && p->get_key() == breq);
 
-			tree_hole.erase(ptr);
-			tree_block.erase(p);
+		tree_hole.erase(ptr);
+		tree_block.erase(p);
 
-			nblock.start = breq.start;
-			nblock.size += breq.size;
+		nblock.start = breq.start;
+		nblock.size += breq.size;
 
-		}
 	}
 
 	ptr = tree_hole.find_ge(got);
 	if (ptr) // try to merge with the left block
+		tmp = ptr->get_key();
+	else
+		tmp.start = kheap_end, tmp.size = 0;
+
+	if (nblock.start + nblock.size != tmp.start)
 	{
-		Hole_t tmp = ptr->get_key();
-		if (nblock.start + nblock.size != tmp.start)
-		{
-			Block_t breq;
-			breq.start = nblock.start + nblock.size;
-			breq.size = tmp.start - breq.start;
-			Rbt<Block_t>::Node *p = tree_block.find_ge(breq);
-			kassert(p != NULL && p->get_key() == breq);
+		Block_t breq;
+		breq.start = nblock.start + nblock.size;
+		breq.size = tmp.start - breq.start;
+		Rbt<Block_t>::Node *p = tree_block.find_ge(breq);
+		kassert(p != NULL && p->get_key() == breq);
 
-			tree_hole.erase(ptr);
-			tree_block.erase(p);
+		tree_hole.erase(ptr);
+		tree_block.erase(p);
 
-			nblock.size += breq.size;
-		}
+		nblock.size += breq.size;
 	}
 
 	tree_block.insert(nblock);
+}
+
+void kheap_init(Uint32_t start, Uint32_t size)
+{
+	Block_t b;
+	b.start = start;
+	b.size = size;
+	tree_block.insert(b);
+
+	kheap_begin = start;
+	kheap_end = start + size;
 }
 
 void* Tree_mm::alloc()
@@ -182,4 +198,30 @@ void Tree_mm::free(void *ptr)
 {
 	freed[nfreed ++] = ptr;
 }
+
+#ifdef DEBUG
+#include <scio.h>
+
+static void walk_block(const Block_t &b)
+{
+	Scio::printf("unallocated block: start=0x%x size=0x%x\n", b.start, b.size);
+}
+
+static void walk_hole(const Hole_t &h)
+{
+	Scio::printf("allocated: start=0x%x size=0x%x\n", h.start, h.size);
+}
+
+void kheap_output_debug_msg()
+{
+	using namespace Scio;
+
+	printf("number of nodes ever allocated: %d\n", Tree_mm::nstatic_mem / Tree_mm::TREE_NODE_SIZE);
+	printf("number of currently ununsed nodes: %d\n", Tree_mm::nfreed);
+
+	tree_block.walk(walk_block);
+	tree_hole.walk(walk_hole);
+
+}
+#endif // DEBUG
 

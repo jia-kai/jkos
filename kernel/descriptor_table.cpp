@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Mon Nov 29 18:35:27 2010 +0800
+ * $Date: Wed Dec 01 22:02:45 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -48,7 +48,7 @@ arguments:
 		vectors on the master become offset1..offset1+7
 	offset2 - same for slave PIC: offset2..offset2+7
 */
-static void remap_PIC(int offset1, int offset2);
+static void remap_PIC(Uint8_t offset1, Uint8_t offset2);
 
 #define LOOP_ALL_INTERRUPT(func) \
 	func(0); func(1); func(2); func(3); func(4); func(5); func(6); func(7); \
@@ -144,27 +144,27 @@ void isr_unhandled(Isr_registers_t reg)
 	}
 }
 
-void GDT_entry_t::set(Uint32_t base, Uint32_t limit, Uint8_t access, Uint8_t flag)
+void GDT_entry_t::set(Uint32_t base, Uint32_t limit, Uint8_t access_, Uint8_t flag)
 {
 	this->base_low = base & 0xFFFF;
 	this->base_middle = (base >> 16) & 0xFF;
-	this->base_high = (base >> 24) & 0xFF;
+	this->base_high = (Uint8_t)((base >> 24) & 0xFF);
 
 	this->limit_low = limit & 0xFFFF;
-	this->limit_high_and_flag = ((limit >> 16) & 0xF) | ((flag & 0xF) << 4);
+	this->limit_high_and_flag = (Uint8_t)(((limit >> 16) & 0xF) | ((flag & 0xF) << 4));
 
-	this->access = access;
+	this->access = access_;
 }
 
-void IDT_entry_t::set(Uint32_t offset, Uint8_t sel, Uint8_t flag)
+void IDT_entry_t::set(Uint32_t offset, Uint8_t sel_, Uint8_t flag_)
 {
 	this->offset_low = offset & 0xFFFF;
-	this->offset_high = (offset >> 16) & 0xFFFF;
+	this->offset_high = (Uint16_t)((offset >> 16) & 0xFFFF);
 
-	this->selector = sel;
+	this->selector = sel_;
 	this->zero = 0;
 
-	this->flag = flag;
+	this->flag = flag_;
 }
 
 #define PIC1		0x20		/* IO base address for master PIC */
@@ -189,7 +189,7 @@ void IDT_entry_t::set(Uint32_t offset, Uint8_t sel, Uint8_t flag)
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
 
-void remap_PIC(int offset1, int offset2)
+void remap_PIC(Uint8_t offset1, Uint8_t offset2)
 {
 	using namespace Port;
 

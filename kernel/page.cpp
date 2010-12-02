@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Wed Dec 01 20:46:37 2010 +0800
+ * $Date: Thu Dec 02 15:45:37 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -27,6 +27,9 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <scio.h>
 #include <cstring.h>
 #include <descriptor_table.h>
+#include <kheap.h>
+
+#pragma GCC diagnostic ignored "-Wconversion"
 
 // defined in the linker script
 extern "C" Uint32_t kernel_img_end;
@@ -37,9 +40,8 @@ static Uint32_t kheap_end = ((Uint32_t)&kernel_img_end) + 1;
 
 using namespace Page;
 
-static Directory_t
-	*kernel_page_dir,
-	*current_page_dir;
+static Directory_t *current_page_dir;
+Directory_t *Page::kernel_page_dir;
 
 // bitset of used frames
 static Uint32_t *frames, nframes;
@@ -51,7 +53,7 @@ static Uint32_t frame_unused(); // return an unused frame, or -1 if no such one
 // allocate memory during initialization
 static void* init_malloc(Uint32_t size, int palign = 0);
 
-static void page_fault(Isr_registers_t reg); // page fault handler
+static void page_fault(Isr_registers_t reg) __attribute__((noreturn)); // page fault handler
 
 void Table_entry_t::alloc(bool is_kernel, bool is_writable)
 {
@@ -78,9 +80,8 @@ void Table_entry_t::free()
 	}
 }
 
-Table_entry_t* Directory_t::get_page(Uint32_t , bool )
+Table_entry_t* Directory_t::get_page(Uint32_t addr, bool make, bool rw, bool user)
 {
-	/*
 	addr >>= 12;
 	int tb_idx = addr >> 10,
 		tb_offset = addr & 0x3FF;
@@ -89,19 +90,16 @@ Table_entry_t* Directory_t::get_page(Uint32_t , bool )
 		if (!make)
 			return NULL;
 
-		Uint32_t phy;
 		memset(
-				tables[tb_idx] = (Table_t*)init_malloc_ap(sizeof(Table_t), &phy),
+				tables[tb_idx] = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12)),
 				0, sizeof(Table_t));
 
 		entries[tb_idx].present = 1;
-		entries[tb_idx].rw = 1;
-		entries[tb_idx].user = 1;
-		entries[tb_idx].addr = phy >> 12;
+		entries[tb_idx].rw = rw ? 1 : 0;
+		entries[tb_idx].user = user ? 1 : 0;
+		entries[tb_idx].addr = get_physical_addr((Uint32_t)tables[tb_idx], true, true, true) >> 12;
 	}
 	return &(tables[tb_idx]->pages[tb_offset]);
-	*/
-	return NULL;
 }
 
 void Directory_t::enable()
@@ -109,8 +107,22 @@ void Directory_t::enable()
 	if (current_page_dir != this)
 	{
 		current_page_dir = this;
-		asm volatile ("mov %0, %%cr3" : : "r"(&entries));
+		asm volatile ("mov %0, %%cr3" : : "r"(phyaddr));
 	}
+}
+
+Uint32_t Directory_t::get_physical_addr(Uint32_t addr, bool alloc, bool is_kernel, bool is_writable)
+{
+	Table_entry_t *page = get_page(addr, false);
+	if (page == NULL)
+		return (Uint32_t)-1;
+	if (!page->addr)
+	{
+		if (!alloc)
+			return (Uint32_t)-1;
+		page->alloc(is_kernel, is_writable);
+	}
+	return (page->addr << 12) | (addr & 0xFFF);
 }
 
 void Page::init()
@@ -142,6 +154,8 @@ void Page::init()
 			kernel_page_dir->entries[tb_idx].rw = 1;
 			kernel_page_dir->entries[tb_idx].user = 1;
 			kernel_page_dir->entries[tb_idx].addr = ((Uint32_t)kernel_page_dir->tables[tb_idx]) >> 12;
+
+			kernel_page_dir->phyaddr = (Uint32_t)(kernel_page_dir->entries);
 		}
 		kernel_page_dir->tables[tb_idx]->pages[tb_offset].alloc(false, false);
 		// kernel code is readable but not writable from userspace
@@ -158,6 +172,11 @@ void Page::init()
 	);
 
 	isr_register(14, page_fault);
+
+	kheap_init(kheap_end, 0xFFFFFFFFu - kheap_end);
+
+	Scio::printf("page initialization completed. kernel static memory usage: %d kb\n",
+			kheap_end >> 10);
 }
 
 void frame_set(Uint32_t addr)

@@ -1,6 +1,6 @@
 /*
  * $File: kheap.h
- * $Date: Wed Dec 01 17:23:46 2010 +0800
+ * $Date: Wed Dec 01 21:41:13 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -42,6 +42,10 @@ extern void kfree(void *ptr);
  * @start, @size: start address and size of usable virtual memory
  */
 extern void kheap_init(Uint32_t start, Uint32_t size);
+
+#ifdef DEBUG
+extern void kheap_output_debug_msg();
+#endif
 
 #endif // HEADER_KHEAP
 

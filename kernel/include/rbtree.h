@@ -1,6 +1,6 @@
 /*
  * $File: rbtree.h
- * $Date: Wed Dec 01 17:27:40 2010 +0800
+ * $Date: Thu Dec 02 11:12:04 2010 +0800
  *
  * red-black tree template
  *
@@ -47,7 +47,7 @@ public:
 
 	typedef void (*Walk_callback_t)(const Key_t &key);
 
-	void walk(Walk_callback_t callback);
+	void walk(Walk_callback_t callback) const;
 
 	void insert(const Key_t &val);
 
@@ -89,7 +89,7 @@ private:
 	static int do_check(Node *root);
 #endif
 
-	static void do_walk(Node *root, Walk_callback_t callback);
+	static void do_walk(const Node *root, Walk_callback_t callback);
 
 	static Node *do_find_ge(Node *root, Key_t val);
 	static Node *do_find_le(Node *root, Key_t val);
@@ -470,7 +470,7 @@ typename Rbt<Key_t>::Node* Rbt<Key_t>::find_kth(int k)
 
 
 template <typename Key_t>
-void Rbt<Key_t>::do_walk(Node *root, Walk_callback_t callback)
+void Rbt<Key_t>::do_walk(const Node *root, Walk_callback_t callback)
 {
 	if (root != NIL)
 	{
@@ -481,7 +481,7 @@ void Rbt<Key_t>::do_walk(Node *root, Walk_callback_t callback)
 }
 
 template <typename Key_t>
-void Rbt<Key_t>::walk(Walk_callback_t callback)
+void Rbt<Key_t>::walk(Walk_callback_t callback) const
 {
 	do_walk(tree_root, callback);
 }
