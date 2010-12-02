@@ -1,6 +1,6 @@
 /*
  * $File: scio.h
- * $Date: Wed Dec 01 19:17:03 2010 +0800
+ * $Date: Thu Dec 02 16:01:16 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -31,7 +31,7 @@ namespace Scio
 	/*
 	 * like the printf in libc
 	 * available format characters:
-	 *	s, x, d, u, c, %, f
+	 *	s, x, d, u, c, %, f, p
 	 */
 	extern void printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 	extern void puts(const char *str);

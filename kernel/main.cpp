@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Thu Dec 02 11:52:20 2010 +0800
+ * $Date: Thu Dec 02 17:13:06 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -78,14 +78,17 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 		Uint32_t ptr[3];
 		for (int i = 0; i < 3; i ++)
 		{
+			Scio::printf("subloop %d\n", i);
 			ptr[i] = (Uint32_t)kmalloc(8 + i, 4);
 			Scio::printf("\nptr[%d]=0x%x\n", i, ptr[i]);
 			kheap_output_debug_msg();
+			*(char*)ptr[i] = 'x';
 			wait_key();
 		}
 
 		for (int i = 0; i < 3; i ++)
 		{
+			Scio::printf("subloop %d\n", i);
 			kfree((void*)ptr[i]);
 			Scio::printf("\nptr[%d] freed (orig addr=0x%x)\n", i, ptr[i]);
 			kheap_output_debug_msg();
@@ -93,7 +96,18 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 		}
 	}
 
-	kfree(0);
+	/*
+	for (int i = 0; i < 3; i ++)
+	{
+		int volatile *x = (int*)kmalloc(sizeof(int));
+		Scio::printf("addr=%p\n", x);
+		wait_key();
+		*x = 1;
+		kfree((void*)x);
+	}
+	*/
+
+	//kfree(0);
 
 	for (; ;);
 }

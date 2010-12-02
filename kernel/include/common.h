@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Wed Dec 01 20:36:51 2010 +0800
+ * $Date: Thu Dec 02 16:53:27 2010 +0800
  *
  * some common definitions and functions
  */
@@ -53,6 +53,14 @@ extern void _kassert_failed(const char *statement, const char *file, int line) _
 #else
 #	define kassert(s) 
 #endif
+
+template <typename T>
+static inline const T& max(const T &a, const T &b)
+{ return a > b ? a : b; }
+
+template <typename T>
+static inline const T& min(const T &a, const T &b)
+{ return a < b ? a : b; }
 
 static const int
 	CLOCK_TICK_RATE	=	1193180,

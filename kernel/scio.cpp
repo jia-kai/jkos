@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Thu Dec 02 11:07:14 2010 +0800
+ * $Date: Thu Dec 02 16:07:07 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -173,6 +173,22 @@ void Scio::vprintf(const char *fmt, va_list argp)
 							f *= 10;
 						}
 						buf_mem[n ++] = 0;
+						buf = buf_mem;
+					}
+					break;
+				case 'p':
+					{
+						Uint32_t val = (Uint32_t)va_arg(argp, void*);
+						strcpy(buf_mem, "#0x");
+						for (int i = 7; i >= 0; i --)
+						{
+							int x = (val >> (i << 2)) & 0xF;
+							if (x < 10)
+								x += '0';
+							else x += 'A';
+							buf_mem[10 - i] = (char)x;
+						}
+						buf_mem[11] = 0;
 						buf = buf_mem;
 					}
 					break;

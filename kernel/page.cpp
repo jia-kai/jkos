@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Thu Dec 02 15:45:37 2010 +0800
+ * $Date: Thu Dec 02 16:10:00 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -53,7 +53,7 @@ static Uint32_t frame_unused(); // return an unused frame, or -1 if no such one
 // allocate memory during initialization
 static void* init_malloc(Uint32_t size, int palign = 0);
 
-static void page_fault(Isr_registers_t reg) __attribute__((noreturn)); // page fault handler
+static void page_fault(Isr_registers_t reg); // page fault handler
 
 void Table_entry_t::alloc(bool is_kernel, bool is_writable)
 {
@@ -186,6 +186,7 @@ void frame_set(Uint32_t addr)
 
 void frame_clear(Uint32_t addr)
 {
+	Scio::printf("frame 0x%x freed\n", addr);
 	frames[addr >> 5] &= ~(1 << (addr & 31));
 }
 
@@ -199,6 +200,7 @@ Uint32_t frame_unused()
 			int j = 0;
 			while (tmp & 1)
 				tmp >>= 1, j ++;
+			Scio::printf("new frame allocated: 0x%x\n", (i << 5) + j);
 			return (i << 5) + j;
 		}
 
@@ -217,6 +219,14 @@ void page_fault(Isr_registers_t reg)
 {
 	Uint32_t addr;
 	asm volatile("mov %%cr2, %0" : "=r" (addr));
+
+	Table_entry_t *page = current_page_dir->get_page(addr, false);
+	if (page && !(reg.err_code & 1))
+	{
+		// XXX: all allocated frames are kernel used and writable
+		page->alloc(true, true);
+		return;
+	}
 
 	Scio::printf("page fault: err_code=0x%x", reg.err_code);
 

@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Thu Dec 02 11:54:29 2010 +0800
+ * $Date: Thu Dec 02 17:06:15 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -26,6 +26,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <rbtree.h>
 #include <common.h>
+#include <page.h>
 
 static Uint32_t kheap_begin, kheap_end;
 
@@ -103,6 +104,9 @@ void* kmalloc(Uint32_t size, int palign)
 		hole.size = as - got.start + size;
 		tree_hole.insert(hole);
 
+		for (Uint32_t i = as; i < as + size; i += 0x1000)
+			Page::kernel_page_dir->get_page(i, true, true, false);
+
 		return (void*)as;
 	}
 }
@@ -119,18 +123,21 @@ void kfree(void *addr)
 	Hole_t got = ptr->get_key();
 	tree_hole.erase(ptr);
 
-	Block_t nblock;
+	Block_t nblock; // new block to be inserted
 	nblock.start = got.start;
 	nblock.size = got.size;
 
 	Hole_t tmp; // the hole adjacent to newly freed block
+
+	Uint32_t hole_left_end, hole_right_start;
 
 	ptr = tree_hole.find_le(got);
 	if (ptr) // try to merge with the left block
 		tmp = ptr->get_key();
 	else
 		tmp.start = kheap_begin, tmp.size = 0;
-	if (tmp.start + tmp.size != nblock.start)
+	hole_left_end = tmp.start + tmp.size;
+	if (hole_left_end != nblock.start)
 	{
 		Block_t breq;
 		breq.start = tmp.start + tmp.size;
@@ -143,7 +150,6 @@ void kfree(void *addr)
 
 		nblock.start = breq.start;
 		nblock.size += breq.size;
-
 	}
 
 	ptr = tree_hole.find_ge(got);
@@ -151,8 +157,8 @@ void kfree(void *addr)
 		tmp = ptr->get_key();
 	else
 		tmp.start = kheap_end, tmp.size = 0;
-
-	if (nblock.start + nblock.size != tmp.start)
+	hole_right_start = tmp.start;
+	if (nblock.start + nblock.size != hole_right_start)
 	{
 		Block_t breq;
 		breq.start = nblock.start + nblock.size;
@@ -167,6 +173,20 @@ void kfree(void *addr)
 	}
 
 	tree_block.insert(nblock);
+
+	// free used pages
+	Uint32_t
+		start = max(hole_left_end, got.start & 0xFFFFF000),
+		end = min(hole_right_start, get_aligned(got.start + got.size, 12));
+	for (Uint32_t i = get_aligned(start, 12); i + 0x1000 <= end; i += 0x1000)
+	{
+		Page::Table_entry_t *page = Page::kernel_page_dir->get_page(i, false);
+		if (page)
+		{
+			page->free();
+			Page::invlpg(i);
+		}
+	}
 }
 
 void kheap_init(Uint32_t start, Uint32_t size)

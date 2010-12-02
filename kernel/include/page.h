@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Thu Dec 02 15:44:14 2010 +0800
+ * $Date: Thu Dec 02 17:08:05 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -92,7 +92,7 @@ namespace Page
 		// if the corresponding table does not exist:
 		//		if @make is true, a new table will be allocated
 		//		otherwise NULL is returned
-		Table_entry_t *get_page(Uint32_t addr, bool make, bool rw = true, bool user = true);
+		Table_entry_t *get_page(Uint32_t addr, bool make, bool rw = false, bool user = true);
 
 		// load this page directory into the CR3 register
 		void enable();
@@ -108,6 +108,10 @@ namespace Page
 	void init();
 
 	extern Directory_t *kernel_page_dir;
+
+	// invalidate the TLB entry for page containing memory address @addr
+	static inline void invlpg(Uint32_t addr)
+	{ asm volatile ("invlpg %0" : : "m"(*(char*)addr)); }
 }
 
 #endif // HEADER_PAGE

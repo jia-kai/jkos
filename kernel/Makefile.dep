@@ -3,7 +3,7 @@ obj/cstring.o: cstring.cpp include/cstring.h
 obj/descriptor_table.o: descriptor_table.cpp include/descriptor_table.h \
  include/common.h include/cstring.h include/port.h include/scio.h
 obj/kheap.o: kheap.cpp include/kheap.h include/common.h include/rbtree.h \
- include/scio.h
+ include/page.h include/scio.h
 obj/main.o: main.cpp include/multiboot.h include/scio.h \
  include/descriptor_table.h include/common.h include/port.h \
  include/page.h include/kheap.h
