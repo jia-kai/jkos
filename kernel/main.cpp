@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Thu Dec 02 17:13:06 2010 +0800
+ * $Date: Thu Dec 02 20:18:35 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -32,6 +32,8 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <kheap.h>
 
+#include <fs.h>
+
 static void init_timer();
 static void timer_tick(Isr_registers_t reg);
 static void isr_kbd(Isr_registers_t reg);
@@ -40,9 +42,24 @@ static int last_key;
 
 static void wait_key()
 {
-	while (last_key != 0x9e);
 	last_key = 0;
+	Scio::printf("press any key to continue...\n");
+	while (!last_key);
 }
+
+class Base
+{
+	public:
+		virtual void f() {Scio::printf("f in base\n");}
+		virtual ~Base() {Scio::printf("base destructed\n");}
+};
+
+class Child : public Base
+{
+	public:
+		void f() {Scio::printf("f in child\n");}
+		~Child() {Scio::printf("child destructed\n");}
+};
 
 extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 {
@@ -71,7 +88,9 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	// volatile int *ptr = (int*)0xF000000F;
 	// *ptr = 0;
 
-
+	wait_key();
+	
+	/*
 	for (int l = 0; l < 3; l ++)
 	{
 		Scio::printf("\n\nLoop %d:\n", l);
@@ -96,6 +115,8 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 		}
 	}
 
+	*/
+
 	/*
 	for (int i = 0; i < 3; i ++)
 	{
@@ -108,7 +129,13 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	*/
 
 	//kfree(0);
+	
+	Base *ptr = new Child;
+	ptr->f();
 
+	delete ptr;
+
+	panic("test");
 	for (; ;);
 }
 

@@ -1,6 +1,6 @@
 /*
  * $File: common.cpp
- * $Date: Wed Dec 01 20:45:20 2010 +0800
+ * $Date: Thu Dec 02 20:00:45 2010 +0800
  *
  * some common definitions and functions
  */
@@ -26,23 +26,41 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <common.h>
 #include <stdarg.h>
 #include <scio.h>
+#include <port.h>
+
+static void die() __attribute__((noreturn));
 
 void _panic_func(const char *file, const char *func, int line, const char *fmt, ...)
 {
+	Scio::push_color(Scio::RED, Scio::BLACK);
 	Scio::printf("KERNEL PANIC at %s:%s:%d :\n", file, func, line);
 	va_list ap;
 	va_start(ap, fmt);
 	Scio::vprintf(fmt, ap);
 	va_end(ap);
 
-	asm volatile ("cli");
-	for (; ;);
+	die();
 }
 
 void _kassert_failed(const char *statement, const char *file, int line)
 {
+	Scio::push_color(Scio::RED, Scio::BLACK);
 	Scio::printf("assertion \"%s\" failed at %s:%d\n",
 			statement, file, line);
+
+	die();
+}
+
+static void die()
+{
+	// enable pc speaker
+	Uint8_t port_0x61_val = Port::inb(0x61) & 0xFC;
+	Port::wait();
+	Port::outb(0x43, 0xB6);
+	Uint16_t count = CLOCK_TICK_RATE / 2000;
+	Port::outb(0x42, (Uint8_t)(count & 0xFF));
+	Port::outb(0x42, (Uint8_t)(count >> 8));
+	Port::outb(0x61, port_0x61_val | 3);
 
 	asm volatile ("cli");
 	for (; ;);

@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Thu Dec 02 16:07:07 2010 +0800
+ * $Date: Thu Dec 02 22:02:18 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -23,6 +23,7 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <ctype.h>
 #include <common.h>
 #include <stdarg.h>
 #include <scio.h>
@@ -217,7 +218,7 @@ void Scio::cls()
 
 void putc(char ch)
 {
-	if (ch < 0)
+	if (!isprint(ch) && ch != '\r' && ch != '\n')
 		return;
 	if (ch == '\r')
 	{

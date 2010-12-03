@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Wed Dec 01 21:59:25 2010 +0800
+# $Date: Thu Dec 02 19:17:43 2010 +0800
 
 #
 # This file is part of JKOS
@@ -29,9 +29,9 @@ AS = as
 
 INCLUDE_DIR = -I include
 DEFINES = -DDEBUG
-CXXFLAGS = -Wall -Wextra -Werror -Weffc++ -Woverloaded-virtual -Wsign-promo -Wignored-qualifiers -Wfloat-equal -Wshadow \
-		   -Wcast-qual  -Wcast-align -Wconversion  -Wlogical-op -Waggregate-return -Wno-builtin-macro-redefined \
-		   -Wmissing-noreturn  -Wpadded  -Wunreachable-code  -Winline -Woverlength-strings \
+CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qualifiers -Wfloat-equal -Wshadow \
+		   -Wcast-qual  -Wcast-align -Wconversion  -Wlogical-op -Waggregate-return \
+		   -Wmissing-noreturn  -Wpadded  -Winline -Woverlength-strings \
 		   -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
 		   -fno-stack-protector $(INCLUDE_DIR) $(DEFINES) -g
 OBJ_DIR = obj
@@ -64,7 +64,7 @@ kernel.bin: linker.ld $(OBJS)
 
 .PHONY: qemu clean hg
 qemu: hda.img
-	qemu -hda hda.img
+	qemu --soundhw pcspk -hda hda.img
 
 clean:
 	rm -f kernel.bin $(OBJS)

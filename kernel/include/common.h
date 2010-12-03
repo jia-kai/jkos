@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Thu Dec 02 16:53:27 2010 +0800
+ * $Date: Thu Dec 02 17:39:01 2010 +0800
  *
  * some common definitions and functions
  */
@@ -61,6 +61,9 @@ static inline const T& max(const T &a, const T &b)
 template <typename T>
 static inline const T& min(const T &a, const T &b)
 { return a < b ? a : b; }
+
+typedef Uint32_t Size_t; // size type
+typedef Uint64_t Ssize_t; // signed size type
 
 static const int
 	CLOCK_TICK_RATE	=	1193180,
