@@ -1,4 +1,5 @@
-obj/./lib/cstring.o: lib/cstring.cpp include/lib/cstring.h
+obj/./lib/cstring.o: lib/cstring.cpp include/lib/cstring.h \
+ include/common.h
 obj/./lib/cxxsupport.o: lib/cxxsupport.cpp include/common.h \
  include/kheap.h include/scio.h include/lib/cxxsupport.h
 obj/./core/main.o: core/main.cpp include/multiboot.h include/scio.h \
@@ -16,6 +17,6 @@ obj/./core/descriptor_table.o: core/descriptor_table.cpp \
  include/descriptor_table.h include/common.h include/lib/cstring.h \
  include/port.h include/scio.h
 obj/./core/kheap.o: core/kheap.cpp include/lib/rbtree.h include/common.h \
- include/kheap.h include/page.h include/scio.h
+ include/lib/cstring.h include/kheap.h include/page.h include/scio.h
 obj/./core/asm/loader.o: ./core/asm/loader.s
 obj/./core/asm/interrupt.o: ./core/asm/interrupt.s

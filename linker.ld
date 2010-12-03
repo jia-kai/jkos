@@ -1,6 +1,6 @@
 /*
  * $File: linker.ld
- * $Date: Fri Dec 03 14:56:24 2010 +0800
+ * $Date: Fri Dec 03 18:56:24 2010 +0800
  *
  * the linker script
  *
@@ -51,6 +51,8 @@ SECTIONS
 
 	.ctors ALIGN(4096) :
 	{
+		kheap_start_ctors = .;
+		*kheap.o(.ctor*)
 		start_ctors = .;
 		*(.ctor*)
 		end_ctors = .;
@@ -76,12 +78,20 @@ SECTIONS
 		*(.gnu.linkonce.b*)
 	}
 
+	.eh_frame ALIGN(4096) :
+	{
+		eh_frame_start = .;
+		*(.eh_frame*)
+		. += 4;
+		eh_frame_end = .;
+		. += 4;
+	}
+
 	kernel_img_end = .;
 	
 	/DISCARD/ :
 	{
 		*(.comment)
-		*(.eh_frame) /* You should discard this unless you're implementing runtime support for C++ exceptions. */
 	}
 }
 

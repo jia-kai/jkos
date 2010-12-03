@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 03 16:08:16 2010 +0800
+ * $Date: Fri Dec 03 18:59:55 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -46,12 +46,17 @@ static void wait_key()
 	while (!last_key);
 }
 
+void func()
+{
+	throw 2;
+}
+
 extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 {
 	init_descriptor_tables();
 	Scio::init();
-	cxxsupport_init();
 	Page::init();
+	cxxsupport_init();
 
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
 	{
@@ -115,6 +120,14 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	*/
 
 	//kfree(0);
+
+	try
+	{
+		func();
+	} catch (...)
+	{
+		Scio::printf("catched");
+	}
 
 	int *ptr = new int[8192];
 	memset(ptr, 0, sizeof(int) * 8192);
