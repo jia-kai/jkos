@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 03 15:46:03 2010 +0800
+ * $Date: Fri Dec 03 16:08:16 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -80,11 +80,11 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	for (int l = 0; l < 3; l ++)
 	{
 		Scio::printf("\n\nLoop %d:\n", l);
-		Uint32_t ptr[3];
+		uint32_t ptr[3];
 		for (int i = 0; i < 3; i ++)
 		{
 			Scio::printf("subloop %d\n", i);
-			ptr[i] = (Uint32_t)kmalloc(8 + i, 4);
+			ptr[i] = (uint32_t)kmalloc(8 + i, 4);
 			Scio::printf("\nptr[%d]=0x%x\n", i, ptr[i]);
 			kheap_output_debug_msg();
 			*(char*)ptr[i] = 'x';
@@ -130,12 +130,12 @@ void init_timer()
 	isr_register(ISR_GET_NUM_BY_IRQ(0), timer_tick);
 
 	using namespace Port;
-	Uint32_t divisor = CLOCK_TICK_RATE / KERNEL_HZ;
+	uint32_t divisor = CLOCK_TICK_RATE / KERNEL_HZ;
 	outb(0x43, 0b00110110);
 	wait();
-	outb(0x40, (Uint8_t)(divisor & 0xFF));
+	outb(0x40, (uint8_t)(divisor & 0xFF));
 	wait();
-	outb(0x40, (Uint8_t)((divisor >> 8) & 0xFF));
+	outb(0x40, (uint8_t)((divisor >> 8) & 0xFF));
 }
 
 void timer_tick(Isr_registers_t reg)
@@ -149,7 +149,7 @@ void timer_tick(Isr_registers_t reg)
 
 void isr_kbd(Isr_registers_t reg)
 {
-	Uint8_t code = Port::inb(0x60);
+	uint8_t code = Port::inb(0x60);
 
 	// Scio::printf("keyboard scancode: 0x%x\n", code);
 

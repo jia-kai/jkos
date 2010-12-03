@@ -1,6 +1,6 @@
 /*
- * $File: fs_base.h
- * $Date: Thu Dec 02 21:47:44 2010 +0800
+ * $File: base.h
+ * $Date: Fri Dec 03 15:53:10 2010 +0800
  *
  * file system base class
  */
@@ -30,13 +30,13 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 const int FILENAME_LEN_MAX = 128;
 
-typedef Uint32_t File_size_t;
+typedef uint32_t File_size_t;
 
 class Fs_node
 {
 protected:
 	char name[FILENAME_LEN_MAX];	// filename
-	Uint32_t
+	uint32_t
 		mask,						// the permission mask
 		uid, gid,					// owner user id and group id
 		flags;						// node type

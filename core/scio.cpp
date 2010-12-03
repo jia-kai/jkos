@@ -35,9 +35,9 @@ const int COLOR_STACK_SIZE = 32,
 	  NCOL = 80, NROW = 25,
 	  FLOAT_PRECESION = 4;
 
-static volatile Uint8_t *videomem;
+static volatile uint8_t *videomem;
 static bool video_monochrome;
-static Uint8_t color_stack[COLOR_STACK_SIZE];
+static uint8_t color_stack[COLOR_STACK_SIZE];
 static int ncolor_stack,
 		   xpos, ypos;
 
@@ -48,14 +48,14 @@ static const char *u2s(unsigned n, int base);
 
 void Scio::init()
 {
-	char c = (*(volatile Uint16_t*)0x410) & 0x30;
+	char c = (*(volatile uint16_t*)0x410) & 0x30;
 	if (c == 0x30)
 	{
-		videomem = (Uint8_t*)0xB0000;
+		videomem = (uint8_t*)0xB0000;
 		video_monochrome = true;
 	} else
 	{
-		videomem = (Uint8_t*)0xB8000;
+		videomem = (uint8_t*)0xB8000;
 		video_monochrome = false;
 	}
 	push_color(LIGHT_GRAY, BLACK);
@@ -72,7 +72,7 @@ void Scio::push_color(Color_t forecolor, Color_t backcolor)
 	if (video_monochrome)
 		color_stack[ncolor_stack ++] = forecolor == backcolor ? 0 : 0x07;
 	else
-		color_stack[ncolor_stack ++] = (Uint8_t)(((Uint8_t)backcolor) << 4 | ((Uint8_t)forecolor));
+		color_stack[ncolor_stack ++] = (uint8_t)(((uint8_t)backcolor) << 4 | ((uint8_t)forecolor));
 }
 
 void Scio::pop_color()
@@ -180,7 +180,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 					break;
 				case 'p':
 					{
-						Uint32_t val = (Uint32_t)va_arg(argp, void*);
+						uint32_t val = (uint32_t)va_arg(argp, void*);
 						strcpy(buf_mem, "#0x");
 						for (int i = 7; i >= 0; i --)
 						{
@@ -257,9 +257,9 @@ void move_cursor()
 {
 	int pos = ypos * NCOL + xpos;
 	Port::outb(0x3D4, 0x0E);
-	Port::outb(0x3D5, (Uint8_t)((pos >> 8) & 0xFF));
+	Port::outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 	Port::outb(0x3D4, 0x0F);
-	Port::outb(0x3D5, (Uint8_t)(pos & 0xFF));
+	Port::outb(0x3D5, (uint8_t)(pos & 0xFF));
 }
 
 const char *u2s(unsigned n, int base)

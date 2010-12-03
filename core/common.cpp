@@ -56,12 +56,12 @@ void _kassert_failed(const char *statement, const char *file, int line)
 static void die()
 {
 	// enable pc speaker
-	Uint8_t port_0x61_val = Port::inb(0x61) & 0xFC;
+	uint8_t port_0x61_val = Port::inb(0x61) & 0xFC;
 	Port::wait();
 	Port::outb(0x43, 0xB6);
-	Uint16_t count = CLOCK_TICK_RATE / 2000;
-	Port::outb(0x42, (Uint8_t)(count & 0xFF));
-	Port::outb(0x42, (Uint8_t)(count >> 8));
+	uint16_t count = CLOCK_TICK_RATE / 2000;
+	Port::outb(0x42, (uint8_t)(count & 0xFF));
+	Port::outb(0x42, (uint8_t)(count >> 8));
 	Port::outb(0x61, port_0x61_val | 3);
 
 	asm volatile ("cli");

@@ -32,34 +32,34 @@ namespace Page
 {
 	struct Directory_entry_t
 	{
-		Uint32_t present	: 1;	// whether this page is present in memory
-		Uint32_t rw			: 1;	// writable iff it is set
-		Uint32_t user		: 1;	// accessible by all iff it is set
-		Uint32_t wrt_thr	: 1;	// write-through caching enabled if set,
+		uint32_t present	: 1;	// whether this page is present in memory
+		uint32_t rw			: 1;	// writable iff it is set
+		uint32_t user		: 1;	// accessible by all iff it is set
+		uint32_t wrt_thr	: 1;	// write-through caching enabled if set,
 		// write-back enabled otherwise
-		Uint32_t cache_dis	: 1;	// this page will not cached iff it is set
-		Uint32_t accessed	: 1;	// whether this page has been read or written to
-		Uint32_t zero		: 6;	// set size to 4kb; other fields not used
-		Uint32_t addr		: 20;	// page table 4kb aligned address
+		uint32_t cache_dis	: 1;	// this page will not cached iff it is set
+		uint32_t accessed	: 1;	// whether this page has been read or written to
+		uint32_t zero		: 6;	// set size to 4kb; other fields not used
+		uint32_t addr		: 20;	// page table 4kb aligned address
 	} __attribute__((packed));
 
 	struct Table_entry_t
 	{
-		Uint32_t present	: 1;	// whether this page is present in memory
-		Uint32_t rw			: 1;	// writable iff it is set
-		Uint32_t user		: 1;	// accessible by all iff it is set
-		Uint32_t wrt_thr	: 1;	// write-through caching enabled if set,
+		uint32_t present	: 1;	// whether this page is present in memory
+		uint32_t rw			: 1;	// writable iff it is set
+		uint32_t user		: 1;	// accessible by all iff it is set
+		uint32_t wrt_thr	: 1;	// write-through caching enabled if set,
 		// write-back enabled otherwise
-		Uint32_t cache_dis	: 1;	// this page will not cached iff it is set
-		Uint32_t accessed	: 1;	// whether this page has been read or written to
-		Uint32_t dirty		: 1;	// whether this page has been written to (not updated by CPU)
-		Uint32_t zero		: 1;
-		Uint32_t global		: 1;	// if set, prevents the TLB from updating the address in it's cache
+		uint32_t cache_dis	: 1;	// this page will not cached iff it is set
+		uint32_t accessed	: 1;	// whether this page has been read or written to
+		uint32_t dirty		: 1;	// whether this page has been written to (not updated by CPU)
+		uint32_t zero		: 1;
+		uint32_t global		: 1;	// if set, prevents the TLB from updating the address in it's cache
 		// if CR3 is reset.
 		// Note, that the page global enable bit in
 		// CR4 must be set to enable this feature. 
-		Uint32_t available	: 3;
-		Uint32_t addr		: 20;	// physical page frame address
+		uint32_t available	: 3;
+		uint32_t addr		: 20;	// physical page frame address
 
 
 		// allocate a frame for this page
@@ -85,14 +85,14 @@ namespace Page
 		Directory_entry_t entries[1024];
 
 		// physical address of entries
-		Uint32_t phyaddr;
+		uint32_t phyaddr;
 
 
 		// get the page containing virtual address @addr in this page directory
 		// if the corresponding table does not exist:
 		//		if @make is true, a new table will be allocated
 		//		otherwise NULL is returned
-		Table_entry_t *get_page(Uint32_t addr, bool make, bool rw = false, bool user = true);
+		Table_entry_t *get_page(uint32_t addr, bool make, bool rw = false, bool user = true);
 
 		// load this page directory into the CR3 register
 		void enable();
@@ -102,7 +102,7 @@ namespace Page
 		// if the page has no corresponding frame:
 		//		if @alloc is true, a new frame will be allocated
 		//		otherwise -1 is returned
-		Uint32_t get_physical_addr(Uint32_t addr, bool alloc, bool is_kernel, bool is_writable);
+		uint32_t get_physical_addr(uint32_t addr, bool alloc, bool is_kernel, bool is_writable);
 	};
 
 	void init();
@@ -110,7 +110,7 @@ namespace Page
 	extern Directory_t *kernel_page_dir;
 
 	// invalidate the TLB entry for page containing memory address @addr
-	static inline void invlpg(Uint32_t addr)
+	static inline void invlpg(uint32_t addr)
 	{ asm volatile ("invlpg %0" : : "m"(*(char*)addr)); }
 }
 

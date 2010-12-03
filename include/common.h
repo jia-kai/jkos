@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Fri Dec 03 15:44:50 2010 +0800
+ * $Date: Fri Dec 03 16:03:38 2010 +0800
  *
  * some common definitions and functions
  */
@@ -26,14 +26,14 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef HEADER_COMMON
 #define HEADER_COMMON
 
-typedef char Int8_t;
-typedef unsigned char Uint8_t;
-typedef short int Int16_t;
-typedef unsigned short int Uint16_t;
-typedef int Int32_t;
-typedef unsigned int Uint32_t;
-typedef long long int Int64_t;
-typedef unsigned long long int Uint64_t;
+typedef char int8_t;
+typedef unsigned char uint8_t;
+typedef short int int16_t;
+typedef unsigned short int uint16_t;
+typedef int int32_t;
+typedef unsigned int uint32_t;
+typedef long long int int64_t;
+typedef unsigned long long int uint64_t;
 
 #define NULL 0
 
@@ -62,8 +62,8 @@ template <typename T>
 static inline const T& min(const T &a, const T &b)
 { return a < b ? a : b; }
 
-typedef Uint32_t Size_t; // size type
-typedef Uint64_t Ssize_t; // signed size type
+typedef uint32_t size_t; // size type
+typedef int32_t ssize_t; // signed size type
 
 static const int
 	CLOCK_TICK_RATE	=	1193180,

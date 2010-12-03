@@ -32,11 +32,11 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <scio.h>
 
 // defined in loader.s
-extern "C" void gdt_flush(Uint32_t);
-extern "C" void idt_flush(Uint32_t);
+extern "C" void gdt_flush(uint32_t);
+extern "C" void idt_flush(uint32_t);
 
 // defined in interrupt.s
-extern "C" Uint32_t isr_callback_table[256];
+extern "C" uint32_t isr_callback_table[256];
 
 static void init_gdt();
 static void init_idt();
@@ -48,7 +48,7 @@ arguments:
 		vectors on the master become offset1..offset1+7
 	offset2 - same for slave PIC: offset2..offset2+7
 */
-static void remap_PIC(Uint8_t offset1, Uint8_t offset2);
+static void remap_PIC(uint8_t offset1, uint8_t offset2);
 
 #define LOOP_ALL_INTERRUPT(func) \
 	func(0); func(1); func(2); func(3); func(4); func(5); func(6); func(7); \
@@ -77,7 +77,7 @@ void init_gdt()
 	static GDT_ptr_t	gdt_ptr;
 
 	gdt_ptr.limit = sizeof(gdt_entries) - 1;
-	gdt_ptr.base = (Uint32_t)&gdt_entries;
+	gdt_ptr.base = (uint32_t)&gdt_entries;
 
 	gdt_entries[0].set(0, 0, 0, 0);
 
@@ -93,7 +93,7 @@ void init_gdt()
 	// usermode data segment
 	gdt_entries[4].set(0, 0xFFFFFFFF, 0b11110010, 0b1100);
 
-	gdt_flush((Uint32_t)&gdt_ptr);
+	gdt_flush((uint32_t)&gdt_ptr);
 }
 
 void init_idt()
@@ -102,34 +102,34 @@ void init_idt()
 	static IDT_ptr_t	idt_ptr;
 
 	idt_ptr.limit = sizeof(idt_entries) - 1;
-	idt_ptr.base = (Uint32_t)&idt_entries;
+	idt_ptr.base = (uint32_t)&idt_entries;
 
 	memset(idt_entries, 0, sizeof(idt_entries));
 
-	const Uint32_t
+	const uint32_t
 		IDT_SEL = 0x08,
 		IDT_FLAG = 0b10001110;
 
 	for (int i = 0; i < 256; i ++)
 		if (!isr_callback_table[i])
-			isr_callback_table[i] = (Uint32_t)isr_unhandled;
+			isr_callback_table[i] = (uint32_t)isr_unhandled;
 
 	remap_PIC(32, 40);
 
 #define ADD_ISR(n) \
-	idt_entries[n].set((Uint32_t)isr##n, IDT_SEL, IDT_FLAG)
+	idt_entries[n].set((uint32_t)isr##n, IDT_SEL, IDT_FLAG)
 
 	LOOP_ALL_INTERRUPT(ADD_ISR)
 
 #undef ADD_IRQ
 
-	idt_flush((Uint32_t)&idt_ptr);
+	idt_flush((uint32_t)&idt_ptr);
 }
 
 void isr_register(int num, Isr_t callback)
 {
 	if (num >= 0 && num < 256)
-		isr_callback_table[num] = (Uint32_t)callback;
+		isr_callback_table[num] = (uint32_t)callback;
 }
 
 void isr_unhandled(Isr_registers_t reg)
@@ -144,22 +144,22 @@ void isr_unhandled(Isr_registers_t reg)
 	}
 }
 
-void GDT_entry_t::set(Uint32_t base, Uint32_t limit, Uint8_t access_, Uint8_t flag)
+void GDT_entry_t::set(uint32_t base, uint32_t limit, uint8_t access_, uint8_t flag)
 {
 	this->base_low = base & 0xFFFF;
 	this->base_middle = (base >> 16) & 0xFF;
-	this->base_high = (Uint8_t)((base >> 24) & 0xFF);
+	this->base_high = (uint8_t)((base >> 24) & 0xFF);
 
 	this->limit_low = limit & 0xFFFF;
-	this->limit_high_and_flag = (Uint8_t)(((limit >> 16) & 0xF) | ((flag & 0xF) << 4));
+	this->limit_high_and_flag = (uint8_t)(((limit >> 16) & 0xF) | ((flag & 0xF) << 4));
 
 	this->access = access_;
 }
 
-void IDT_entry_t::set(Uint32_t offset, Uint8_t sel_, Uint8_t flag_)
+void IDT_entry_t::set(uint32_t offset, uint8_t sel_, uint8_t flag_)
 {
 	this->offset_low = offset & 0xFFFF;
-	this->offset_high = (Uint16_t)((offset >> 16) & 0xFFFF);
+	this->offset_high = (uint16_t)((offset >> 16) & 0xFFFF);
 
 	this->selector = sel_;
 	this->zero = 0;
@@ -189,11 +189,11 @@ void IDT_entry_t::set(Uint32_t offset, Uint8_t sel_, Uint8_t flag_)
 #define ICW4_BUF_MASTER	0x0C		/* Buffered mode/master */
 #define ICW4_SFNM	0x10		/* Special fully nested (not) */
 
-void remap_PIC(Uint8_t offset1, Uint8_t offset2)
+void remap_PIC(uint8_t offset1, uint8_t offset2)
 {
 	using namespace Port;
 
-	Uint8_t
+	uint8_t
 		a1 = inb(PIC1_DATA),					// save masks
 		a2 = inb(PIC2_DATA);
 

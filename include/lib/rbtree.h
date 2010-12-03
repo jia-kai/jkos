@@ -107,7 +107,7 @@ private:
 template <typename Key_t>
 class Rbt<Key_t>::Node
 {
-	Uint32_t par_and_color;
+	uint32_t par_and_color;
 #ifdef RBT_SIZE
 	int size;
 #endif
@@ -137,7 +137,7 @@ class Rbt<Key_t>::Node
 	{ par_and_color = (par_and_color & 1) | (from->par_and_color & (~1)); }
 
 	inline void set_par(Node *par)
-	{ par_and_color = (par_and_color & 1) | (Uint32_t)par; }
+	{ par_and_color = (par_and_color & 1) | (uint32_t)par; }
 
 public:
 	inline const Key_t& get_key()

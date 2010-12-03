@@ -34,43 +34,43 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 // Global Descriptor Table
 struct GDT_entry_t
 {
-	Uint16_t limit_low;
-	Uint16_t base_low;
-	Uint8_t base_middle;
-	Uint8_t access;
-	Uint8_t limit_high_and_flag;
-	Uint8_t base_high;
+	uint16_t limit_low;
+	uint16_t base_low;
+	uint8_t base_middle;
+	uint8_t access;
+	uint8_t limit_high_and_flag;
+	uint8_t base_high;
 
-	void set(Uint32_t base, Uint32_t limit, Uint8_t access, Uint8_t flag);
+	void set(uint32_t base, uint32_t limit, uint8_t access, uint8_t flag);
 } __attribute__((packed));
 
 struct GDT_ptr_t
 {
-	Uint16_t limit;
-	Uint32_t base;
+	uint16_t limit;
+	uint32_t base;
 } __attribute__((packed));
 
 
 struct IDT_entry_t
 {
-	Uint16_t offset_low;
-	Uint16_t selector;
-	Uint8_t zero;
-	Uint8_t flag;
-	Uint16_t offset_high;
+	uint16_t offset_low;
+	uint16_t selector;
+	uint8_t zero;
+	uint8_t flag;
+	uint16_t offset_high;
 
-	void set(Uint32_t offset, Uint8_t sel, Uint8_t flag);
+	void set(uint32_t offset, uint8_t sel, uint8_t flag);
 } __attribute__((packed));
 
 struct IDT_ptr_t
 {
-	Uint16_t limit;
-	Uint32_t base;
+	uint16_t limit;
+	uint32_t base;
 } __attribute__((packed));
 
 struct Isr_registers_t
 {
-	Uint32_t
+	uint32_t
 		ds,										// pushed in interrupt.s
 		edi, esi, ebp, esp, ebx, edx, ecx, eax,	// Pushed by pusha.
 		int_no, err_code,						// interrupt number and error code

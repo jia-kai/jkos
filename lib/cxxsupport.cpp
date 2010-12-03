@@ -31,7 +31,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <lib/cxxsupport.h>
 
 // defined in the linker script
-extern "C" Uint32_t start_ctors, end_ctors, start_dtors, end_dtors;
+extern "C" uint32_t start_ctors, end_ctors, start_dtors, end_dtors;
 
 
 // for pure virtual functions
@@ -57,13 +57,13 @@ static int natexit_funcs;
 
 void cxxsupport_init()
 {
-	for(Uint32_t *ptr = &start_ctors; ptr < &end_ctors; ptr ++)
+	for(uint32_t *ptr = &start_ctors; ptr < &end_ctors; ptr ++)
 		((void (*)(void))*ptr)();
 }
 
 void cxxsupport_finalize()
 {
-	for(Uint32_t *ptr = &start_dtors; ptr < &end_dtors; ptr ++)
+	for(uint32_t *ptr = &start_dtors; ptr < &end_dtors; ptr ++)
 		((void (*)(void))*ptr)();
 	__cxa_finalize(NULL);
 }
@@ -116,12 +116,12 @@ void __cxa_pure_virtual()
 	panic("pure virtual function can not be called");
 }
 
-extern void *operator new(Uint32_t size)
+extern void *operator new(uint32_t size)
 {
 	return kmalloc(size);
 }
  
-extern void *operator new[](Uint32_t size)
+extern void *operator new[](uint32_t size)
 {
 	return kmalloc(size);
 }
