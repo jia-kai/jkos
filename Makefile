@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Thu Dec 02 19:17:43 2010 +0800
+# $Date: Fri Dec 03 15:45:31 2010 +0800
 
 #
 # This file is part of JKOS
@@ -20,8 +20,8 @@
 # along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-CXXSOURCES = $(wildcard *.cpp)
-ASMSOURCES = $(wildcard *.s)
+CXXSOURCES = $(shell find . -name "*.cpp")
+ASMSOURCES = $(shell find . -name "*.s")
 OBJS = $(patsubst %.cpp,obj/%.o,$(CXXSOURCES)) $(patsubst %.s,obj/%.o,$(ASMSOURCES))
 
 CXX = g++
@@ -62,9 +62,12 @@ obj/%.o: %.s
 kernel.bin: linker.ld $(OBJS)
 	ld -T linker.ld -o kernel.bin $(OBJS)
 
-.PHONY: qemu clean hg
+.PHONY: qemu qemu-dbg clean hg
 qemu: hda.img
-	qemu --soundhw pcspk -hda hda.img
+	qemu -hda hda.img
+
+qemu-dbg: kernel.bin
+	qemu --kernel kernel.bin -S -s 
 
 clean:
 	rm -f kernel.bin $(OBJS)

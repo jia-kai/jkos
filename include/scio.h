@@ -1,6 +1,6 @@
 /*
  * $File: scio.h
- * $Date: Thu Dec 02 16:01:16 2010 +0800
+ * $Date: Fri Dec 03 15:36:44 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -63,6 +63,30 @@ namespace Scio
 	// initialize and call cls()
 	extern void init();
 }
+
+#ifdef DEBUG
+#define MSG_DEBUG(fmt, arg...) \
+do \
+{ \
+	Scio::push_color(Scio::LIGHT_BLUE, Scio::BLACK); \
+	Scio::puts("[debug] "); \
+	Scio::pop_color(); \
+	Scio::printf(fmt, ## arg); \
+	Scio::puts("\n"); \
+} while(0)
+#else
+#define MSG_DEBUG(fmt, arg...) do {} while(0)
+#endif
+
+#define MSG_INFO(fmt, arg...) \
+do \
+{ \
+	Scio::push_color(Scio::LIGHT_BLUE, Scio::BLACK); \
+	Scio::puts("[info] "); \
+	Scio::pop_color(); \
+	Scio::printf(fmt, ## arg); \
+	Scio::puts("\n"); \
+} while(0)
 
 #endif // HEADER_SCIO
 

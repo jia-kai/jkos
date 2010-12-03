@@ -1,5 +1,5 @@
 # $File: loader.s
-# $Date: Mon Nov 29 18:22:59 2010 +0800
+# $Date: Fri Dec 03 11:58:22 2010 +0800
 #
 # Multiboot loader (doc: http://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 #
@@ -49,6 +49,8 @@ loader:
 	mov $(stack + STACKSIZE), %esp	# set up the stack
 	push %eax						# Multiboot magic number
 	push %ebx						# Multiboot data structure
+
+	call kmain
 
 	mov $start_ctors, %ebx
 	jmp 2f					# call static constructors

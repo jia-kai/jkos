@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Wed Dec 01 22:02:45 2010 +0800
+ * $Date: Fri Dec 03 11:19:08 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -27,7 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <descriptor_table.h>
-#include <cstring.h>
+#include <lib/cstring.h>
 #include <port.h>
 #include <scio.h>
 

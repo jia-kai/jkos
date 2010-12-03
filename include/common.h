@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Thu Dec 02 17:39:01 2010 +0800
+ * $Date: Fri Dec 03 15:44:50 2010 +0800
  *
  * some common definitions and functions
  */
@@ -51,7 +51,7 @@ extern void _kassert_failed(const char *statement, const char *file, int line) _
 			_kassert_failed(# s, __FILE__, __LINE__); \
 	} while (0)
 #else
-#	define kassert(s) 
+#	define kassert(s) do {} while(0)
 #endif
 
 template <typename T>

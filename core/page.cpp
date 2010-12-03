@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Thu Dec 02 16:10:00 2010 +0800
+ * $Date: Fri Dec 03 15:40:52 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -25,7 +25,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <page.h>
 #include <scio.h>
-#include <cstring.h>
+#include <lib/cstring.h>
 #include <descriptor_table.h>
 #include <kheap.h>
 
@@ -157,8 +157,12 @@ void Page::init()
 
 			kernel_page_dir->phyaddr = (Uint32_t)(kernel_page_dir->entries);
 		}
-		kernel_page_dir->tables[tb_idx]->pages[tb_offset].alloc(false, false);
-		// kernel code is readable but not writable from userspace
+		Table_entry_t &page = kernel_page_dir->tables[tb_idx]->pages[tb_offset];
+		page.present = 1;
+		page.rw = 0;
+		page.user = 1;
+		page.addr = addr;
+		frame_set(addr);
 	}
 
 	kernel_page_dir->enable();
@@ -175,7 +179,7 @@ void Page::init()
 
 	kheap_init(kheap_end, 0xFFFFFFFFu - kheap_end);
 
-	Scio::printf("page initialization completed. kernel static memory usage: %d kb\n",
+	MSG_INFO("page initialization completed. kernel static memory usage: %d kb",
 			kheap_end >> 10);
 }
 
@@ -186,7 +190,7 @@ void frame_set(Uint32_t addr)
 
 void frame_clear(Uint32_t addr)
 {
-	Scio::printf("frame 0x%x freed\n", addr);
+	MSG_DEBUG("frame 0x%x freed", addr);
 	frames[addr >> 5] &= ~(1 << (addr & 31));
 }
 
@@ -200,7 +204,7 @@ Uint32_t frame_unused()
 			int j = 0;
 			while (tmp & 1)
 				tmp >>= 1, j ++;
-			Scio::printf("new frame allocated: 0x%x\n", (i << 5) + j);
+			MSG_DEBUG("new frame allocated: 0x%x", (i << 5) + j);
 			return (i << 5) + j;
 		}
 

@@ -1,6 +1,6 @@
 /*
  * $File: common.cpp
- * $Date: Thu Dec 02 20:00:45 2010 +0800
+ * $Date: Fri Dec 03 15:45:03 2010 +0800
  *
  * some common definitions and functions
  */
@@ -24,7 +24,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <common.h>
-#include <stdarg.h>
+#include <lib/stdarg.h>
 #include <scio.h>
 #include <port.h>
 
@@ -42,6 +42,7 @@ void _panic_func(const char *file, const char *func, int line, const char *fmt, 
 	die();
 }
 
+#ifdef DEBUG
 void _kassert_failed(const char *statement, const char *file, int line)
 {
 	Scio::push_color(Scio::RED, Scio::BLACK);
@@ -50,6 +51,7 @@ void _kassert_failed(const char *statement, const char *file, int line)
 
 	die();
 }
+#endif
 
 static void die()
 {

@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Thu Dec 02 20:18:35 2010 +0800
+ * $Date: Fri Dec 03 15:46:03 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -29,10 +29,9 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <port.h>
 #include <page.h>
 #include <common.h>
-
 #include <kheap.h>
-
-#include <fs.h>
+#include <lib/cxxsupport.h>
+#include <lib/cstring.h>
 
 static void init_timer();
 static void timer_tick(Isr_registers_t reg);
@@ -47,24 +46,11 @@ static void wait_key()
 	while (!last_key);
 }
 
-class Base
-{
-	public:
-		virtual void f() {Scio::printf("f in base\n");}
-		virtual ~Base() {Scio::printf("base destructed\n");}
-};
-
-class Child : public Base
-{
-	public:
-		void f() {Scio::printf("f in child\n");}
-		~Child() {Scio::printf("child destructed\n");}
-};
-
 extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 {
 	init_descriptor_tables();
 	Scio::init();
+	cxxsupport_init();
 	Page::init();
 
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
@@ -129,14 +115,14 @@ extern "C" void kmain(Multiboot_info_t* , unsigned int magic)
 	*/
 
 	//kfree(0);
+
+	int *ptr = new int[8192];
+	memset(ptr, 0, sizeof(int) * 8192);
+	kheap_output_debug_msg();
+	delete []ptr;
 	
-	Base *ptr = new Child;
-	ptr->f();
-
-	delete ptr;
-
+	cxxsupport_finalize();
 	panic("test");
-	for (; ;);
 }
 
 void init_timer()

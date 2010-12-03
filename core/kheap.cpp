@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Thu Dec 02 17:06:15 2010 +0800
+ * $Date: Fri Dec 03 15:43:05 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <lib/rbtree.h>
 #include <kheap.h>
-#include <rbtree.h>
 #include <common.h>
 #include <page.h>
 
@@ -236,12 +236,17 @@ void kheap_output_debug_msg()
 {
 	using namespace Scio;
 
+	push_color(LIGHT_GREEN, BLACK);
+	puts("start kernel heap debug output\n");
+
 	printf("number of nodes ever allocated: %d\n", Tree_mm::nstatic_mem / Tree_mm::TREE_NODE_SIZE);
 	printf("number of currently ununsed nodes: %d\n", Tree_mm::nfreed);
 
 	tree_block.walk(walk_block);
 	tree_hole.walk(walk_hole);
 
+	puts("end kernel heap debug output\n");
+	pop_color();
 }
 #endif // DEBUG
 

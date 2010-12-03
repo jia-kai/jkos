@@ -1,6 +1,6 @@
 /*
  * $File: scio.cpp
- * $Date: Thu Dec 02 22:02:18 2010 +0800
+ * $Date: Fri Dec 03 14:03:12 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -23,12 +23,13 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ctype.h>
 #include <common.h>
-#include <stdarg.h>
+#include <lib/stdarg.h>
 #include <scio.h>
-#include <cstring.h>
 #include <port.h>
+
+#include <lib/cstring.h>
+#include <lib/ctype.h>
 
 const int COLOR_STACK_SIZE = 32,
 	  NCOL = 80, NROW = 25,
@@ -186,7 +187,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 							int x = (val >> (i << 2)) & 0xF;
 							if (x < 10)
 								x += '0';
-							else x += 'A';
+							else x += 'A' - 10;
 							buf_mem[10 - i] = (char)x;
 						}
 						buf_mem[11] = 0;

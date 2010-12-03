@@ -1,4 +1,6 @@
-kernel/hda.img
-kernel/obj
-kernel/kernel.bin
-kernel/root
+syntax: glob
+hda.img
+*.o
+*.bin
+kernel.bin
+root

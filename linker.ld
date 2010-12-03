@@ -1,6 +1,6 @@
 /*
  * $File: linker.ld
- * $Date: Mon Nov 29 14:51:44 2010 +0800
+ * $Date: Fri Dec 03 14:56:24 2010 +0800
  *
  * the linker script
  *
@@ -45,12 +45,19 @@ SECTIONS
 	.rodata ALIGN(4096) :
 	{
 		*(.rodata*)
+		*(.rdata*)
 		*(.gnu.linkonce.r*)
+	}
 
+	.ctors ALIGN(4096) :
+	{
 		start_ctors = .;
 		*(.ctor*)
 		end_ctors = .;
+	}
 
+	.dtors ALIGN(4096) :
+	{
 		start_dtors = .;
 		*(.dtor*)
 		end_dtors = .;

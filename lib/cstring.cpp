@@ -1,8 +1,8 @@
 /*
- * $File: cxxsupport.cpp
- * $Date: Thu Dec 02 19:39:33 2010 +0800
+ * $File: cstring.cpp
+ * $Date: Fri Dec 03 11:18:46 2010 +0800
  *
- * C++ support functions
+ * functions for manipulating C-style strings
  */
 /*
 This file is part of JKOS
@@ -23,33 +23,40 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <common.h>
-#include <kheap.h>
+#include <lib/cstring.h>
 
-extern "C" void __cxa_pure_virtual() __attribute__((noreturn));
-
-void __cxa_pure_virtual()
+void memset(void *dest, int val, int cnt)
 {
-	panic("pure virtual function can not be called");
+	asm volatile
+	(
+		"cld\n"
+		"rep stosb" : :
+		"D"(dest), "a"(val), "c"(cnt)
+	);
 }
 
-extern void *operator new(Uint32_t size)
+void memcpy(void *dest, const void *src, int cnt)
 {
-	return kmalloc(size);
+	asm volatile
+	(
+		"cld\n"
+		"rep movsb" : :
+		"D"(dest), "S"(src), "c"(cnt)
+	);
 }
- 
-extern void *operator new[](Uint32_t size)
+
+char *strcpy(char *dest, const char *src)
 {
-	return kmalloc(size);
-}
- 
-extern void operator delete(void *p)
-{
-	kfree(p);
-}
- 
-extern void operator delete[](void *p)
-{
-	kfree(p);
+	asm volatile
+	(
+		"1:\n"
+		"lodsb\n"
+		"stosb\n"
+		"cmp $0, %%al\n"
+		"jne 1b" : :
+		"D"(dest), "S"(src) :
+		"al"
+	);
+	return (char*)dest;
 }
 

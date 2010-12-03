@@ -1,8 +1,8 @@
 /*
- * $File: cstring.cpp
- * $Date: Fri Nov 26 20:31:42 2010 +0800
+ * $File: cxxsupport.h
+ * $Date: Fri Dec 03 13:40:49 2010 +0800
  *
- * functions for manipulating C-style strings
+ * C++ support functions
  */
 /*
 This file is part of JKOS
@@ -23,40 +23,11 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring.h>
+#ifndef HEADER_CXXSUPPORT
+#define HEADER_CXXSUPPORT
 
-void memset(void *dest, int val, int cnt)
-{
-	asm volatile
-	(
-		"cld\n"
-		"rep stosb" : :
-		"D"(dest), "a"(val), "c"(cnt)
-	);
-}
+// should only be called by kmail
+extern void cxxsupport_init();
+extern void cxxsupport_finalize();
 
-void memcpy(void *dest, const void *src, int cnt)
-{
-	asm volatile
-	(
-		"cld\n"
-		"rep movsb" : :
-		"D"(dest), "S"(src), "c"(cnt)
-	);
-}
-
-char *strcpy(char *dest, const char *src)
-{
-	asm volatile
-	(
-		"1:\n"
-		"lodsb\n"
-		"stosb\n"
-		"cmp $0, %%al\n"
-		"jne 1b" : :
-		"D"(dest), "S"(src) :
-		"al"
-	);
-	return (char*)dest;
-}
-
+#endif
