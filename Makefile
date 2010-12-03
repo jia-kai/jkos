@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Fri Dec 03 18:57:31 2010 +0800
+# $Date: Fri Dec 03 21:13:26 2010 +0800
 
 #
 # This file is part of JKOS
@@ -32,9 +32,8 @@ DEFINES = -DDEBUG
 CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qualifiers -Wfloat-equal -Wshadow \
 		   -Wcast-qual  -Wcast-align -Wconversion  -Wlogical-op -Waggregate-return \
 		   -Wpadded  -Winline -Woverlength-strings \
-		   -nostdlib -nostartfiles -nodefaultlibs -fno-builtin \
+		   -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
 		   -fno-stack-protector $(INCLUDE_DIR) $(DEFINES) -g
-LDFLAGS = -L. -lgcc_eh -lsupc++
 OBJ_DIR = obj
 
 hda.img: kernel.bin
@@ -61,7 +60,7 @@ obj/%.o: %.s
 	$(AS) $< -o $@
 
 kernel.bin: linker.ld $(OBJS)
-	ld -T linker.ld -o kernel.bin $(OBJS) $(LDFLAGS)
+	ld -T linker.ld -o kernel.bin $(OBJS)
 
 .PHONY: qemu qemu-dbg clean hg
 qemu: hda.img

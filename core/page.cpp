@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Fri Dec 03 15:40:52 2010 +0800
+ * $Date: Fri Dec 03 21:39:57 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -23,9 +23,10 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <page.h>
-#include <scio.h>
 #include <lib/cstring.h>
+#include <page.h>
+#include <multiboot.h>
+#include <scio.h>
 #include <descriptor_table.h>
 #include <kheap.h>
 
@@ -43,12 +44,10 @@ using namespace Page;
 static Directory_t *current_page_dir;
 Directory_t *Page::kernel_page_dir;
 
-// bitset of used frames
+// stack of usable frames
 static uint32_t *frames, nframes;
 
-static void frame_set(uint32_t addr);
-static void frame_clear(uint32_t addr);
-static uint32_t frame_unused(); // return an unused frame, or -1 if no such one
+static void init_frames(Multiboot_info_t *mbd);
 
 // allocate memory during initialization
 static void* init_malloc(uint32_t size, int palign = 0);
@@ -59,14 +58,13 @@ void Table_entry_t::alloc(bool is_kernel, bool is_writable)
 {
 	if (!addr)
 	{
-		addr = frame_unused();
-		if (addr == (uint32_t)-1)
+		if (!nframes)
 			panic("no free frame");
+		addr = frames[-- nframes];
+		MSG_DEBUG("frame 0x%x allocated", addr);
 		present = 1;
 		rw = is_writable ? 1 : 0;
 		user = is_kernel ? 0 : 1;
-
-		frame_set(addr);
 	}
 }
 
@@ -74,7 +72,8 @@ void Table_entry_t::free()
 {
 	if (addr)
 	{
-		frame_clear(addr);
+		frames[nframes ++] = addr;
+		MSG_DEBUG("frame 0x%x freed", addr);
 		addr = 0;
 		present = 0;
 	}
@@ -125,19 +124,16 @@ uint32_t Directory_t::get_physical_addr(uint32_t addr, bool alloc, bool is_kerne
 	return (page->addr << 12) | (addr & 0xFFF);
 }
 
-void Page::init()
+void Page::init(void *ptr_mbd)
 {
-	// XXX: assume we have 16MB of RAM
-	uint32_t memsize = 0x1000000;
-
-	nframes = memsize >> 12;
-	frames = static_cast<uint32_t*>(init_malloc(nframes >> 3));
-	memset(frames, 0, nframes >> 3);
+	Multiboot_info_t *mbd = static_cast<Multiboot_info_t*>(ptr_mbd);
+	kassert(mbd->flags & MULTIBOOT_INFO_MEM_MAP);
 
 	memset(
 			kernel_page_dir = static_cast<Directory_t*>(init_malloc(sizeof(Directory_t), 12)),
 			0, sizeof(Directory_t));
 
+	init_frames(mbd);
 	for (uint32_t i = 0; i < kheap_end; i += 0x1000)
 	{
 		int addr = i >> 12,
@@ -155,15 +151,16 @@ void Page::init()
 			kernel_page_dir->entries[tb_idx].user = 1;
 			kernel_page_dir->entries[tb_idx].addr = ((uint32_t)kernel_page_dir->tables[tb_idx]) >> 12;
 
-			kernel_page_dir->phyaddr = (uint32_t)(kernel_page_dir->entries);
 		}
 		Table_entry_t &page = kernel_page_dir->tables[tb_idx]->pages[tb_offset];
 		page.present = 1;
 		page.rw = 0;
 		page.user = 1;
 		page.addr = addr;
-		frame_set(addr);
 	}
+	while (frames[nframes - 1] <= (kheap_end >> 12))
+		nframes --;
+	kernel_page_dir->phyaddr = (uint32_t)(kernel_page_dir->entries);
 
 	kernel_page_dir->enable();
 
@@ -177,38 +174,10 @@ void Page::init()
 
 	isr_register(14, page_fault);
 
-	kheap_init(kheap_end, 0xFFFFFFFFu - kheap_end);
+	kheap_init(kheap_end, 0xFFFFEFFFu - kheap_end);
 
-	MSG_INFO("page initialization completed. kernel static memory usage: %d kb",
-			kheap_end >> 10);
-}
-
-void frame_set(uint32_t addr)
-{
-	frames[addr >> 5] |= 1 << (addr & 31);
-}
-
-void frame_clear(uint32_t addr)
-{
-	MSG_DEBUG("frame 0x%x freed", addr);
-	frames[addr >> 5] &= ~(1 << (addr & 31));
-}
-
-uint32_t frame_unused()
-{
-	int it = nframes >> 5;
-	for (int i = 0; i < it; i ++)
-		if (frames[i] != 0xFFFFFFFF)
-		{
-			uint32_t tmp = frames[i];
-			int j = 0;
-			while (tmp & 1)
-				tmp >>= 1, j ++;
-			MSG_DEBUG("new frame allocated: 0x%x", (i << 5) + j);
-			return (i << 5) + j;
-		}
-
-	return -1;
+	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n usable 4-kb frames: %d",
+			kheap_end >> 10, nframes);
 }
 
 void* init_malloc(uint32_t size, int palign)
@@ -263,5 +232,57 @@ void page_fault(Isr_registers_t reg)
 	Scio::printf(" at 0x%x\n", addr);
 
 	panic("page fault");
+}
+
+void init_frames(Multiboot_info_t *mbd)
+{
+	uint32_t memsize = 0;
+	uint32_t mmap_addr = mbd->mmap_addr;
+	while (mmap_addr < mbd->mmap_addr + mbd->mmap_length)
+	{
+		Multiboot_mmap_entry_t *mmap = (Multiboot_mmap_entry_t*)mmap_addr;
+
+		MSG_INFO("memory map: %s: start=0x%x len=%d kb",
+				mmap->type == MULTIBOOT_MEMORY_AVAILABLE ?  "available" : "reserved",
+				(uint32_t)mmap->addr, (uint32_t)mmap->len >> 10);
+
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+		{
+			uint64_t end = mmap->addr + mmap->len;
+
+			if (mmap->addr >= 0xFFFFFFFFull || mmap->len >= 0xFFFFFFFFull ||
+					end > 0xFFFFFFFFull)
+				panic("physical memory too large");
+
+
+			if (end > memsize)
+				memsize = (uint32_t)end;
+		}
+
+		mmap_addr += mmap->size + 4;
+	}
+
+	frames = static_cast<uint32_t*>(init_malloc((memsize >> 12) << 2));
+	nframes = 0;
+
+	mmap_addr = mbd->mmap_addr;
+	while (mmap_addr < mbd->mmap_addr + mbd->mmap_length)
+	{
+		Multiboot_mmap_entry_t *mmap = (Multiboot_mmap_entry_t*)mmap_addr;
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+		{
+			uint32_t start = (uint32_t)mmap->addr;
+			if (start)
+				start = ((start - 1) >> 12) + 1;
+			uint32_t end = (uint32_t)(mmap->addr + mmap->len);
+			end >>= 12;
+
+			for (uint32_t i = end; (-- i) >= start; )
+				if (i > (kheap_end >> 12))
+					frames[nframes ++] = i;
+				else break;
+		}
+		mmap_addr += mmap->size + 4;
+	}
 }
 

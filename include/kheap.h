@@ -1,6 +1,6 @@
 /*
  * $File: kheap.h
- * $Date: Fri Dec 03 18:10:06 2010 +0800
+ * $Date: Wed Dec 01 21:41:13 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -33,9 +33,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
  * @size: size in byte
  * @palign: the returned address will be aligned on 2^@palign byte boundries
  */
-extern void* kmalloc(size_t size, int palign = 0);
-
-extern void* krealloc(void *ptr, size_t size);
+extern void* kmalloc(uint32_t size, int palign = 0);
 
 extern void kfree(void *ptr);
 
@@ -43,7 +41,7 @@ extern void kfree(void *ptr);
  * initialize kernel heap (should only be called by Page::init())
  * @start, @size: start address and size of usable virtual memory
  */
-extern void kheap_init(size_t start, size_t size);
+extern void kheap_init(uint32_t start, uint32_t size);
 
 #ifdef DEBUG
 extern void kheap_output_debug_msg();

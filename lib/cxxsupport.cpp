@@ -1,6 +1,6 @@
 /*
  * $File: cxxsupport.cpp
- * $Date: Fri Dec 03 18:45:21 2010 +0800
+ * $Date: Fri Dec 03 15:32:47 2010 +0800
  *
  * C++ support functions
  *
@@ -31,21 +31,8 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <lib/cxxsupport.h>
 
 // defined in the linker script
-extern "C" uint32_t start_ctors, end_ctors, start_dtors, end_dtors, eh_frame_start, eh_frame_end;
+extern "C" uint32_t start_ctors, end_ctors, start_dtors, end_dtors;
 
-// for libsupc++ and libgcc_eh
-extern "C" void abort() __attribute__((noreturn));
-extern "C" int dl_iterate_phdr(void *, void*);
-extern "C" int fputc(int c, void *stream);
-extern "C" int fputs(const char *str, void *stream);
-extern "C" int fwrite(const char *ptr, __SIZE_TYPE__ size, __SIZE_TYPE__ nmemb, void *stream);
-extern "C" void *malloc(__SIZE_TYPE__ size);
-extern "C" void *realloc(void *ptr, __SIZE_TYPE__ size);
-extern "C" void free(void *ptr);
-extern "C" int sprintf(char *str, const char *fmt, ...);
-extern "C" void __register_frame(void *);
-
-void *stderr = (void*)0x21345941;
 
 // for pure virtual functions
 extern "C" void __cxa_pure_virtual() __attribute__((noreturn));
@@ -70,8 +57,6 @@ static int natexit_funcs;
 
 void cxxsupport_init()
 {
-	eh_frame_end = 0;
-	__register_frame(&eh_frame_start);
 	for(uint32_t *ptr = &start_ctors; ptr < &end_ctors; ptr ++)
 		((void (*)(void))*ptr)();
 }
@@ -129,61 +114,6 @@ void __cxa_finalize(void *f)
 void __cxa_pure_virtual()
 {
 	panic("pure virtual function can not be called");
-}
-
-void abort()
-{
-	panic("abort called");
-}
-
-int dl_iterate_phdr(void *, void*)
-{
-	return -1;
-}
-
-int fputc(int c, void *stream)
-{
-	if (stream == stderr)
-		Scio::printf("%c", c);
-	return c;
-}
-
-int fputs(const char *str, void *stream)
-{
-	if (stream == stderr)
-		Scio::puts(str);
-	return 1;
-}
-
-int fwrite(const char *ptr, __SIZE_TYPE__ size, __SIZE_TYPE__ nmemb, void *stream)
-{
-	if (stream == stderr)
-	{
-		for (uint32_t i = 0; i < size * nmemb; i ++)
-			Scio::printf("%c", ptr[i]);
-	}
-	return nmemb;
-}
-
-void *malloc(__SIZE_TYPE__ size)
-{
-	return kmalloc(size);
-}
-
-void *realloc(void *ptr, __SIZE_TYPE__ size)
-{
-	return krealloc(ptr, size);
-}
-
-void free(void *ptr)
-{
-	kfree(ptr);
-}
-
-int sprintf(char *str, const char *, ...)
-{
-	str[0] = 0;
-	return 0;
 }
 
 extern void *operator new(uint32_t size)

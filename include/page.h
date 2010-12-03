@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Thu Dec 02 17:08:05 2010 +0800
+ * $Date: Fri Dec 03 20:14:23 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -105,7 +105,11 @@ namespace Page
 		uint32_t get_physical_addr(uint32_t addr, bool alloc, bool is_kernel, bool is_writable);
 	};
 
-	void init();
+	/*
+	 * initialize paging
+	 * @ptr_mbd: pointer to multiboot_info_t structure
+	 */
+	void init(void *ptr_mbd);
 
 	extern Directory_t *kernel_page_dir;
 
