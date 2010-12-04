@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Fri Dec 03 21:13:37 2010 +0800
+ * $Date: Sat Dec 04 20:29:15 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -29,9 +29,22 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <page.h>
 
 // defined in the linker script
-extern "C" uint32_t start_ctors, kheap_start_ctors;
+extern "C" uint32_t start_ctors, kheap_start_ctors, kernel_img_end;
 
+// used for dynamic memory allocating
 static uint32_t kheap_begin, kheap_end;
+
+// used for static memory allocating (before page initialization completed)
+static uint32_t kheap_static_end = (uint32_t)&kernel_img_end + 4;
+
+// I think 256MB kernel heap is enough
+static const uint32_t
+	KERNEL_HEAP_END = 0xFFFFF000u,
+	KERNEL_HEAP_SIZE = 256 * 1024 * 1024;
+
+// used for memory allocating before calling kheap_init
+static void* kmalloc_pre_init(uint32_t size, int palign);
+
 
 struct Block_t
 {
@@ -78,6 +91,9 @@ static inline uint32_t get_aligned(uint32_t addr, int palign)
 
 void* kmalloc(uint32_t size, int palign)
 {
+	if (!kheap_begin) // kheap_finish_init has not been called
+		return kmalloc_pre_init(size, palign);
+
 	Block_t req;
 	req.size = size;
 	req.start = 0;
@@ -106,9 +122,6 @@ void* kmalloc(uint32_t size, int palign)
 		hole.start = got.start;
 		hole.size = as - got.start + size;
 		tree_hole.insert(hole);
-
-		for (uint32_t i = as; i < as + size; i += 0x1000)
-			Page::kernel_page_dir->get_page(i, true, true, false);
 
 		return (void*)as;
 	}
@@ -192,18 +205,38 @@ void kfree(void *addr)
 	}
 }
 
-void kheap_init(uint32_t start, uint32_t size)
+uint32_t kheap_get_size_pre_init()
+{
+	return kheap_static_end;
+}
+
+void* kmalloc_pre_init(uint32_t size, int palign)
+{
+	kheap_static_end = get_aligned(kheap_static_end, palign);
+	uint32_t ret = kheap_static_end;
+	kheap_static_end += size;
+	return (void*)ret;
+}
+
+void kheap_init()
 {
 	for(uint32_t *ptr = &kheap_start_ctors; ptr < &start_ctors; ptr ++)
 		((void (*)(void))*ptr)();
 
 	Block_t b;
-	b.start = start;
-	b.size = size;
+	b.start = KERNEL_HEAP_END - KERNEL_HEAP_SIZE;
+	b.size = KERNEL_HEAP_SIZE;
 	tree_block.insert(b);
 
-	kheap_begin = start;
-	kheap_end = start + size;
+	for (uint32_t i = b.start; i < KERNEL_HEAP_END; i += 0x1000)
+		Page::kernel_page_dir->get_page(i, true);
+	// **PERMISSION_CONTROL**
+}
+
+void kheap_finish_init()
+{
+	kheap_begin = KERNEL_HEAP_END - KERNEL_HEAP_SIZE;
+	kheap_end = KERNEL_HEAP_END;
 }
 
 void* Tree_mm::alloc()
@@ -211,9 +244,8 @@ void* Tree_mm::alloc()
 	if (nfreed)
 		return freed[-- nfreed];
 
-	// TODO: dynamic allocate memory
 	if (nstatic_mem + TREE_NODE_SIZE >= STATIC_MEM_SIZE)
-		panic("rbt for kernel virtual memory management has run out of memory");
+		panic("run out of kernel heap");
 
 	void *ret = static_mem + nstatic_mem;
 	nstatic_mem += TREE_NODE_SIZE;

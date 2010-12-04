@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Fri Dec 03 23:09:43 2010 +0800
+ * $Date: Sat Dec 04 20:36:24 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -35,26 +35,23 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 // defined in the linker script
 extern "C" uint32_t kernel_img_end;
 
-// used for initializing
-static uint32_t kheap_end = ((uint32_t)&kernel_img_end) + 1;
-
-
 using namespace Page;
 
-static Directory_t *current_page_dir;
-Directory_t *Page::kernel_page_dir;
+Directory_t *Page::kernel_page_dir, *Page::current_page_dir;
 
 // stack of usable frames
 static uint32_t *frames, nframes;
 
+// this will be false until Page::init() finished
+static bool init_finished;
+
 static void init_frames(Multiboot_info_t *mbd);
 
-// allocate memory during initialization
-static void* init_malloc(uint32_t size, int palign = 0);
+static Table_t *clone_table(const Table_t *src);
 
 static void page_fault(Isr_registers_t reg); // page fault handler
 
-void Table_entry_t::alloc(bool is_kernel, bool is_writable)
+void Table_entry_t::alloc(bool user_, bool writable)
 {
 	if (!addr)
 	{
@@ -63,8 +60,8 @@ void Table_entry_t::alloc(bool is_kernel, bool is_writable)
 		addr = frames[-- nframes];
 		MSG_DEBUG("frame 0x%x allocated", addr);
 		present = 1;
-		rw = is_writable ? 1 : 0;
-		user = is_kernel ? 0 : 1;
+		rw = writable ? 1 : 0;
+		user = user_ ? 1 : 0;
 	}
 }
 
@@ -79,7 +76,7 @@ void Table_entry_t::free()
 	}
 }
 
-Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool rw, bool user)
+Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool user, bool writable)
 {
 	addr >>= 12;
 	int tb_idx = addr >> 10,
@@ -94,9 +91,9 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool rw, bool use
 				0, sizeof(Table_t));
 
 		entries[tb_idx].present = 1;
-		entries[tb_idx].rw = rw ? 1 : 0;
+		entries[tb_idx].rw = writable ? 1 : 0;
 		entries[tb_idx].user = user ? 1 : 0;
-		entries[tb_idx].addr = get_physical_addr((uint32_t)tables[tb_idx], true, true, true) >> 12;
+		entries[tb_idx].addr = get_physical_addr(tables[tb_idx], true) >> 12;
 	}
 	return &(tables[tb_idx]->pages[tb_offset]);
 }
@@ -110,18 +107,53 @@ void Directory_t::enable()
 	}
 }
 
-uint32_t Directory_t::get_physical_addr(uint32_t addr, bool alloc, bool is_kernel, bool is_writable)
+uint32_t Directory_t::get_physical_addr(void *addr0, bool alloc, bool user, bool writable)
 {
-	Table_entry_t *page = get_page(addr, false);
+	uint32_t addr = (uint32_t)addr0;
+	if (!init_finished)
+		return addr;
+
+	Table_entry_t *page = get_page(addr);
 	if (page == NULL)
 		return (uint32_t)-1;
 	if (!page->addr)
 	{
 		if (!alloc)
 			return (uint32_t)-1;
-		page->alloc(is_kernel, is_writable);
+			page->alloc(user, writable);
 	}
 	return (page->addr << 12) | (addr & 0xFFF);
+}
+
+Directory_t *Page::clone_directory(const Directory_t *src)
+{
+	Directory_t *dest = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12));
+	memset(dest, 0, sizeof(Directory_t));
+
+	for (int i = 0; i < 1024; i ++)
+		if (src->tables[i])
+		{
+			if (kernel_page_dir->tables[i] == src->tables[i])
+			{
+				dest->tables[i] = src->tables[i];
+				dest->entries[i] = src->entries[i];
+			} else
+			{
+				dest->tables[i] = clone_table(src->tables[i]);
+				dest->entries[i] = src->entries[i];
+				uint32_t addr = current_page_dir->get_physical_addr(dest->tables[i]);
+				kassert(addr != (uint32_t)-1);
+				dest->entries[i].addr = addr >> 12;
+			}
+		}
+
+	return dest;
+}
+
+Table_t *clone_table(const Table_t *)
+{
+	Table_t *dest = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12));
+	return dest;
 }
 
 void Page::init(void *ptr_mbd)
@@ -130,36 +162,28 @@ void Page::init(void *ptr_mbd)
 	kassert(mbd->flags & MULTIBOOT_INFO_MEM_MAP);
 
 	memset(
-			kernel_page_dir = static_cast<Directory_t*>(init_malloc(sizeof(Directory_t), 12)),
+			kernel_page_dir = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12)),
 			0, sizeof(Directory_t));
 
 	init_frames(mbd);
-	for (uint32_t i = 0; i < kheap_end; i += 0x1000)
+
+	kheap_init();
+
+	// make sure virtual address and physical address of kernel code and static kernel heap
+	// are the same
+	for (uint32_t i = 0; i < kheap_get_size_pre_init(); i += 0x1000)
 	{
-		int addr = i >> 12,
-			tb_idx = addr >> 10,
-			tb_offset = addr & 0x3FF;
-		if (!kernel_page_dir->tables[tb_idx])
-		{
-			memset(
-					kernel_page_dir->tables[tb_idx] = static_cast<Table_t*>(
-						init_malloc(sizeof(Table_t), 12)),
-					0, sizeof(Table_t));
-
-			kernel_page_dir->entries[tb_idx].present = 1;
-			kernel_page_dir->entries[tb_idx].rw = 1;
-			kernel_page_dir->entries[tb_idx].user = 1;
-			kernel_page_dir->entries[tb_idx].addr = ((uint32_t)kernel_page_dir->tables[tb_idx]) >> 12;
-
-		}
-		Table_entry_t &page = kernel_page_dir->tables[tb_idx]->pages[tb_offset];
-		page.present = 1;
-		page.rw = 0;
-		page.user = 1;
-		page.addr = addr;
+		// **PERMISSION_CONTROL**
+		Table_entry_t *page = kernel_page_dir->get_page(i, true);
+		page->present = 1;
+		page->rw = 0;
+		page->user = 1;
+		page->addr = i >> 12;
 	}
-	while (frames[nframes - 1] <= (kheap_end >> 12))
+
+	while (frames[nframes - 1] <= (kheap_get_size_pre_init() >> 12))
 		nframes --;
+
 	kernel_page_dir->phyaddr = (uint32_t)(kernel_page_dir->entries);
 
 	kernel_page_dir->enable();
@@ -172,20 +196,13 @@ void Page::init(void *ptr_mbd)
 		: : : "eax"
 	);
 
+	init_finished = true;
+	kheap_finish_init();
+
 	isr_register(14, page_fault);
 
-	kheap_init(kheap_end, 0xFFFFEFFFu - kheap_end);
-
-	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n usable 4-kb frames: %d",
-			kheap_end >> 10, nframes);
-}
-
-void* init_malloc(uint32_t size, int palign)
-{
-	kheap_end = (((kheap_end - 1) >> palign) + 1) << palign;
-	uint32_t ret = kheap_end;
-	kheap_end += size;
-	return (void*)ret;
+	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
+			(kheap_get_size_pre_init() - 0x100000) >> 10, nframes, nframes * 4 / 1024);
 }
 
 void page_fault(Isr_registers_t reg)
@@ -193,11 +210,12 @@ void page_fault(Isr_registers_t reg)
 	uint32_t addr;
 	asm volatile("mov %%cr2, %0" : "=r" (addr));
 
-	Table_entry_t *page = current_page_dir->get_page(addr, false);
+	Table_entry_t *page = current_page_dir->get_page(addr);
 	if (page && !(reg.err_code & 1))
 	{
 		// XXX: all allocated frames are kernel used and writable
-		page->alloc(true, true);
+		// **PERMISSION_CONTROL**
+		page->alloc(false, true);
 		return;
 	}
 
@@ -262,7 +280,7 @@ void init_frames(Multiboot_info_t *mbd)
 		mmap_addr += mmap->size + 4;
 	}
 
-	frames = static_cast<uint32_t*>(init_malloc((memsize >> 12) << 2));
+	frames = static_cast<uint32_t*>(kmalloc((memsize >> 12) << 2));
 	nframes = 0;
 
 	mmap_addr = mbd->mmap_addr;
@@ -278,7 +296,7 @@ void init_frames(Multiboot_info_t *mbd)
 			end >>= 12;
 
 			for (uint32_t i = end; (-- i) >= start; )
-				if (i > (kheap_end >> 12))
+				if (i > (kheap_get_size_pre_init() >> 12))
 					frames[nframes ++] = i;
 				else break;
 		}

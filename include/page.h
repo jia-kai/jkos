@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Fri Dec 03 20:14:23 2010 +0800
+ * $Date: Sat Dec 04 19:10:40 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -63,7 +63,7 @@ namespace Page
 
 
 		// allocate a frame for this page
-		void alloc(bool is_kernel, bool is_writable);
+		void alloc(bool user, bool writable);
 
 		// free the associated frame
 		void free();
@@ -92,7 +92,7 @@ namespace Page
 		// if the corresponding table does not exist:
 		//		if @make is true, a new table will be allocated
 		//		otherwise NULL is returned
-		Table_entry_t *get_page(uint32_t addr, bool make, bool rw = false, bool user = true);
+		Table_entry_t *get_page(uint32_t addr, bool make = false, bool user = true, bool writable = false);
 
 		// load this page directory into the CR3 register
 		void enable();
@@ -102,20 +102,27 @@ namespace Page
 		// if the page has no corresponding frame:
 		//		if @alloc is true, a new frame will be allocated
 		//		otherwise -1 is returned
-		uint32_t get_physical_addr(uint32_t addr, bool alloc, bool is_kernel, bool is_writable);
+		uint32_t get_physical_addr(void *addr, bool alloc = false, bool user = true, bool writable = false);
 	};
 
 	/*
 	 * initialize paging
 	 * @ptr_mbd: pointer to multiboot_info_t structure
 	 */
-	void init(void *ptr_mbd);
+	extern void init(void *ptr_mbd);
 
-	extern Directory_t *kernel_page_dir;
+	/*
+	 * copy a page directory:
+	 *		link the kernel tables
+	 *		copy other frames (mark as ro, copy-on-write)
+	 */
+	extern Directory_t *clone_directory(const Directory_t *src);
 
 	// invalidate the TLB entry for page containing memory address @addr
 	static inline void invlpg(uint32_t addr)
 	{ asm volatile ("invlpg %0" : : "m"(*(char*)addr)); }
+
+	extern Directory_t *kernel_page_dir, *current_page_dir;
 }
 
 #endif // HEADER_PAGE
