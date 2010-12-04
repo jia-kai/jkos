@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 03 21:10:12 2010 +0800
+ * $Date: Fri Dec 03 23:10:13 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -151,6 +151,7 @@ void timer_tick(Isr_registers_t reg)
 
 void isr_kbd(Isr_registers_t reg)
 {
+	last_key = 0;
 	uint8_t code = Port::inb(0x60);
 
 	// Scio::printf("keyboard scancode: 0x%x\n", code);

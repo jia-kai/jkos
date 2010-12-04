@@ -1,5 +1,5 @@
 # $File: loader.s
-# $Date: Fri Dec 03 11:58:22 2010 +0800
+# $Date: Fri Dec 03 23:09:21 2010 +0800
 #
 # Multiboot loader (doc: http://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 #
@@ -51,30 +51,6 @@ loader:
 	push %ebx						# Multiboot data structure
 
 	call kmain
-
-	mov $start_ctors, %ebx
-	jmp 2f					# call static constructors
-
-1:
-	call *(%ebx)
-	add $4, %ebx
-
-2:
-	cmp $end_ctors, %ebx
-	jb 1b
-
-	call  kmain				# call kernel
-
-	mov $start_dtors, %ebx
-	jmp 4f					# call static destructors
-
-3:
-	call *(%ebx)
-	add $4, %ebx
-
-4:
-	cmp $end_dtors, %ebx
-	jb 3b
 
 	cli
 	hang:

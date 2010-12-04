@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Fri Dec 03 21:39:57 2010 +0800
+ * $Date: Fri Dec 03 23:09:43 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -242,7 +242,7 @@ void init_frames(Multiboot_info_t *mbd)
 	{
 		Multiboot_mmap_entry_t *mmap = (Multiboot_mmap_entry_t*)mmap_addr;
 
-		MSG_INFO("memory map: %s: start=0x%x len=%d kb",
+		MSG_INFO("mmap: %s: start=0x%x len=%d kb",
 				mmap->type == MULTIBOOT_MEMORY_AVAILABLE ?  "available" : "reserved",
 				(uint32_t)mmap->addr, (uint32_t)mmap->len >> 10);
 
