@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Sat Dec 04 20:36:24 2010 +0800
+ * $Date: Sat Dec 04 21:36:12 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -48,6 +48,9 @@ static bool init_finished;
 static void init_frames(Multiboot_info_t *mbd);
 
 static Table_t *clone_table(const Table_t *src);
+
+// copy a frame (4kb) from physical address @src to physical address @dest
+static void copy_page_physical(uint32_t dest, uint32_t src);
 
 static void page_fault(Isr_registers_t reg); // page fault handler
 
@@ -130,6 +133,8 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	Directory_t *dest = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12));
 	memset(dest, 0, sizeof(Directory_t));
 
+	dest->phyaddr = current_page_dir->get_physical_addr(dest->entries, true);
+
 	for (int i = 0; i < 1024; i ++)
 		if (src->tables[i])
 		{
@@ -141,18 +146,27 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 			{
 				dest->tables[i] = clone_table(src->tables[i]);
 				dest->entries[i] = src->entries[i];
-				uint32_t addr = current_page_dir->get_physical_addr(dest->tables[i]);
-				kassert(addr != (uint32_t)-1);
-				dest->entries[i].addr = addr >> 12;
+				dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i], true) >> 12;
 			}
 		}
 
 	return dest;
 }
 
-Table_t *clone_table(const Table_t *)
+Table_t *clone_table(const Table_t *src)
 {
 	Table_t *dest = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12));
+	memset(dest, 0, sizeof(Table_t));
+	for (int i = 0; i < 1024; i ++)
+		if (src->pages[i].addr)
+		{
+			// TODO: copy on write
+			dest->pages[i] = src->pages[i];
+			dest->pages[i].addr = 0;
+			dest->pages[i].alloc(src->pages[i].user, src->pages[i].rw);
+
+			copy_page_physical(dest->pages[i].addr << 12, src->pages[i].addr << 12);
+		}
 	return dest;
 }
 
@@ -200,6 +214,9 @@ void Page::init(void *ptr_mbd)
 	kheap_finish_init();
 
 	isr_register(14, page_fault);
+
+	current_page_dir = clone_directory(kernel_page_dir);
+	current_page_dir->enable();
 
 	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
 			(kheap_get_size_pre_init() - 0x100000) >> 10, nframes, nframes * 4 / 1024);
@@ -302,5 +319,31 @@ void init_frames(Multiboot_info_t *mbd)
 		}
 		mmap_addr += mmap->size + 4;
 	}
+}
+
+void copy_page_physical(uint32_t dest, uint32_t src)
+{
+	asm volatile
+	(
+		"pushf\n"
+		"cli\n"
+
+		// disable paging
+		"mov %%cr0, %%eax\n"
+		"and $0x7fffffff, %%eax\n"
+		"mov %%eax, %%cr0\n"
+
+		"cld\n"
+		"rep movsd\n"
+
+		// enable paging
+		"mov %%cr0, %%eax\n"
+		"or $0x80000000, %%eax\n"
+		"mov %%eax, %%cr0\n"
+
+		"popf\n"
+		: : "D"(dest), "S"(src), "c"(1024)
+		: "eax"
+	);
 }
 

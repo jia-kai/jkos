@@ -1,10 +1,7 @@
 # $File: interrupt.s
-# $Date: Mon Nov 29 18:36:50 2010 +0800
+# $Date: Sat Dec 04 20:50:07 2010 +0800
 #
 # asm functions for handling interrupts
-#
-# modified from JamesM's kernel development tutorials
-# (http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html)
 # 
 
 #
