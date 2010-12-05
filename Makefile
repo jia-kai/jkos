@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Fri Dec 03 21:13:26 2010 +0800
+# $Date: Sun Dec 05 22:08:12 2010 +0800
 
 #
 # This file is part of JKOS
@@ -23,6 +23,7 @@
 CXXSOURCES = $(shell find . -name "*.cpp")
 ASMSOURCES = $(shell find . -name "*.s")
 OBJS = $(patsubst %.cpp,obj/%.o,$(CXXSOURCES)) $(patsubst %.s,obj/%.o,$(ASMSOURCES))
+DEPFILES = $(patsubst %.o,%.d,$(OBJS))
 
 CXX = g++
 AS = as
@@ -43,21 +44,20 @@ hda.img: kernel.bin
 	sudo umount root
 	sudo losetup -d /dev/loop0
 
-Makefile.dep: $(CXXSOURCES) $(ASMSOURCES)
-	for i in $(CXXSOURCES); do \
-	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/`echo $$i | sed -e 's/cpp\$$/o/g'`" $$i; \
-	done > Makefile.dep
-	for i in $(ASMSOURCES); do \
-	echo "$(OBJ_DIR)/`echo $$i | sed -e 's/s\$$/o/g'`: $$i" >> Makefile.dep; \
-	done
+obj/%.d: %.cpp
+	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(patsubst %.cpp,obj/%.o,$<)" "$<"  > "$@"
 
-sinclude Makefile.dep
+obj/%.d: %.s
+	echo "$(OBJ_DIR)/$(patsubst %.s,obj/%.o,$<): $<" > "$@"
 
 obj/%.o: %.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 obj/%.o: %.s
 	$(AS) $< -o $@
+
+
+sinclude $(DEPFILES)
 
 kernel.bin: linker.ld $(OBJS)
 	ld -T linker.ld -o kernel.bin $(OBJS)
