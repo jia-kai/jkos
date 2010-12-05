@@ -1,9 +1,9 @@
 # $File: loader.s
-# $Date: Fri Dec 03 23:09:21 2010 +0800
+# $Date: Sun Dec 05 19:53:51 2010 +0800
 #
 # Multiboot loader (doc: http://www.gnu.org/software/grub/manual/multiboot/multiboot.html)
 #
-# modified from http://wiki.osdev.org/C%2B%2B_Bare_Bones
+# reference: http://wiki.osdev.org/C%2B%2B_Bare_Bones
 # 
 
 #
@@ -38,15 +38,14 @@ CHECKSUM	=	-(MAGIC + FLAGS)	# checksum required
 .long FLAGS
 .long CHECKSUM
 
-.global loader, gdt_flush, idt_flush
+.global loader, gdt_flush, idt_flush, initial_stack_pointer
 
-# reserve initial kernel stack space
-STACKSIZE	=	0x4000			# that is, 16k.
-.comm stack, STACKSIZE, 32		# reserve 16k stack on a quadword boundary
+initial_stack_pointer:
+.long 0
 
 loader:
 	cli
-	mov $(stack + STACKSIZE), %esp	# set up the stack
+	mov %esp, initial_stack_pointer
 	push %eax						# Multiboot magic number
 	push %ebx						# Multiboot data structure
 

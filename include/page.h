@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Sat Dec 04 19:10:40 2010 +0800
+ * $Date: Sun Dec 05 10:59:48 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -122,7 +122,7 @@ namespace Page
 	static inline void invlpg(uint32_t addr)
 	{ asm volatile ("invlpg %0" : : "m"(*(char*)addr)); }
 
-	extern Directory_t *kernel_page_dir, *current_page_dir;
+	extern Directory_t *current_page_dir;
 }
 
 #endif // HEADER_PAGE

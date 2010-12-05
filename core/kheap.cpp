@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Sat Dec 04 20:29:15 2010 +0800
+ * $Date: Sun Dec 05 19:54:26 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -27,6 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <common.h>
 #include <page.h>
+#include <scio.h>
 
 // defined in the linker script
 extern "C" uint32_t start_ctors, kheap_start_ctors, kernel_img_end;
@@ -196,7 +197,7 @@ void kfree(void *addr)
 		end = min(hole_right_start, get_aligned(got.start + got.size, 12));
 	for (uint32_t i = get_aligned(start, 12); i + 0x1000 <= end; i += 0x1000)
 	{
-		Page::Table_entry_t *page = Page::kernel_page_dir->get_page(i, false);
+		Page::Table_entry_t *page = Page::current_page_dir->get_page(i, false);
 		if (page)
 		{
 			page->free();
@@ -229,7 +230,7 @@ void kheap_init()
 	tree_block.insert(b);
 
 	for (uint32_t i = b.start; i < KERNEL_HEAP_END; i += 0x1000)
-		Page::kernel_page_dir->get_page(i, true);
+		Page::current_page_dir->get_page(i, true);
 	// **PERMISSION_CONTROL**
 }
 
@@ -237,6 +238,7 @@ void kheap_finish_init()
 {
 	kheap_begin = KERNEL_HEAP_END - KERNEL_HEAP_SIZE;
 	kheap_end = KERNEL_HEAP_END;
+	MSG_INFO("kernel heap address range: %p %p", (void*)kheap_begin, (void*)(kheap_end - 1));
 }
 
 void* Tree_mm::alloc()
@@ -258,8 +260,6 @@ void Tree_mm::free(void *ptr)
 }
 
 #ifdef DEBUG
-#include <scio.h>
-
 static void walk_block(const Block_t &b)
 {
 	Scio::printf("unallocated block: start=0x%x size=0x%x\n", b.start, b.size);

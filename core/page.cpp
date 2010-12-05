@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Sat Dec 04 21:36:12 2010 +0800
+ * $Date: Sun Dec 05 19:50:46 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -37,7 +37,8 @@ extern "C" uint32_t kernel_img_end;
 
 using namespace Page;
 
-Directory_t *Page::kernel_page_dir, *Page::current_page_dir;
+Directory_t *Page::current_page_dir;
+static Directory_t *kernel_page_dir;
 
 // stack of usable frames
 static uint32_t *frames, nframes;
@@ -103,11 +104,8 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool user, bool w
 
 void Directory_t::enable()
 {
-	if (current_page_dir != this)
-	{
-		current_page_dir = this;
-		asm volatile ("mov %0, %%cr3" : : "r"(phyaddr));
-	}
+	current_page_dir = this;
+	asm volatile ("mov %0, %%cr3" : : "r"(phyaddr));
 }
 
 uint32_t Directory_t::get_physical_addr(void *addr0, bool alloc, bool user, bool writable)
@@ -178,6 +176,7 @@ void Page::init(void *ptr_mbd)
 	memset(
 			kernel_page_dir = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12)),
 			0, sizeof(Directory_t));
+	current_page_dir = kernel_page_dir;
 
 	init_frames(mbd);
 
@@ -215,8 +214,7 @@ void Page::init(void *ptr_mbd)
 
 	isr_register(14, page_fault);
 
-	current_page_dir = clone_directory(kernel_page_dir);
-	current_page_dir->enable();
+	clone_directory(kernel_page_dir)->enable();
 
 	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
 			(kheap_get_size_pre_init() - 0x100000) >> 10, nframes, nframes * 4 / 1024);

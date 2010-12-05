@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 03 23:10:13 2010 +0800
+ * $Date: Sun Dec 05 19:29:42 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -30,6 +30,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <page.h>
 #include <common.h>
 #include <kheap.h>
+#include <task.h>
 #include <lib/cxxsupport.h>
 #include <lib/cstring.h>
 
@@ -37,7 +38,7 @@ static void init_timer();
 static void timer_tick(Isr_registers_t reg);
 static void isr_kbd(Isr_registers_t reg);
 
-static int last_key;
+static int volatile last_key;
 
 static void wait_key()
 {
@@ -46,11 +47,12 @@ static void wait_key()
 	while (!last_key);
 }
 
-extern "C" void kmain(Multiboot_info_t *mbd, unsigned int magic)
+extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 {
 	init_descriptor_tables();
 	Scio::init();
 	Page::init(mbd);
+	Task::init();
 	cxxsupport_init();
 
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
