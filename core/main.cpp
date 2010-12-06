@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Sun Dec 05 19:29:42 2010 +0800
+ * $Date: Mon Dec 06 20:02:06 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -78,7 +78,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	*x = 0;
 	*/
 
-	wait_key();
+	// wait_key();
 	
 	/*
 	for (int l = 0; l < 3; l ++)
@@ -120,13 +120,26 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	//kfree(0);
 
+	/*
 	int *ptr = new int[8192];
 	memset(ptr, 0, sizeof(int) * 8192);
 	kheap_output_debug_msg();
 	delete []ptr;
+	*/
+
+	Task::pid_t ret = Task::fork();
+	Scio::printf("fork returned: %d\n", (int)ret);
+
+	while(1)
+	{
+		for (int volatile i = 0; i < 3000000; i ++);
+		Scio::printf("this is process %u\n", Task::getpid());
+	}
 	
 	cxxsupport_finalize();
 	panic("test");
+
+	wait_key();
 }
 
 void init_timer()
@@ -145,10 +158,11 @@ void init_timer()
 void timer_tick(Isr_registers_t reg)
 {
 	static int tick;
-	//if (tick % 100 == 0)
-	//	Scio::printf("timer tick %d\n", tick);
+	if (tick % 100 == 0)
+		Scio::printf("timer tick %d\n", tick);
 	tick ++;
 	isr_eoi(reg.int_no);
+	Task::schedule();
 }
 
 void isr_kbd(Isr_registers_t reg)
