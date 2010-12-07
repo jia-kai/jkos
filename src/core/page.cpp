@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 07 17:23:09 2010 +0800
+ * $Date: Tue Dec 07 19:29:40 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -166,13 +166,12 @@ Table_t *clone_table(Table_t *src, uint32_t base_addr)
 	for (int i = 0; i < 1024; i ++)
 		if (src->pages[i].addr)
 		{
-			//if (Task::is_in_kernel_stack(base_addr | (i << 12)))
-			if (1)
+			if (Task::is_in_kernel_stack(base_addr | (i << 12)))
 			{
-				base_addr = 1;
 				// we should copy kernel stacks directly instead of using copy-on-write
 				// (otherwise will cause triple fault)
 				dest->pages[i] = src->pages[i];
+				dest->pages[i].addr = 0;
 				dest->pages[i].alloc(false, true);
 				copy_page_physical(dest->pages[i].addr << 12, src->pages[i].addr << 12);
 			}
@@ -271,11 +270,13 @@ void page_fault(Isr_registers_t reg)
 					page->alloc(page->user, true);
 					copy_page_physical(page->addr << 12, addr << 12);
 				}
+				return;
 			}
 		}
 	}
 
-	Scio::printf("page fault: err_code=0x%x", reg.err_code);
+	Scio::printf("page fault: entry_addr=%p requestd_addr=%p\nerr_code=0x%x",
+			page, (void*)addr, reg.err_code);
 
 	const char * BIT_MEAN[4][2] =
 	{
@@ -292,18 +293,18 @@ void page_fault(Isr_registers_t reg)
 		{
 			if (first)
 			{
-				Scio::printf(" (");
+				Scio::puts(" (");
 				first = false;
 			}
-			else Scio::printf(", ");
+			else Scio::puts(", ");
 
-			Scio::printf("%s", BIT_MEAN[i][x]);
+			Scio::puts(BIT_MEAN[i][x]);
 		}
 	}
 	if (!first)
-		Scio::printf(") ");
+		Scio::puts(") ");
 
-	Scio::printf(" at 0x%x\n", addr);
+	Scio::puts("\n");
 
 	panic("page fault");
 }

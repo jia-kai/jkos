@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 07 17:21:34 2010 +0800
+ * $Date: Tue Dec 07 19:32:51 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -122,17 +122,27 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	delete []ptr;
 	*/
 
-	//int *x = new int[4096];
+	Page::current_page_dir->get_page(0x1A1A1A10, true);
+	Scio::puts("page got\n");
+	int *x = (int*)0x1A1A1A10;
+	*x = 12345;
+	Scio::puts("calling fork\n");
 	Task::pid_t ret = Task::fork();
 	Scio::printf("fork returned: %d\n", (int)ret);
+	// memset(x, ret, sizeof(int) * 1024);
 
-	while(1)
+	for (int cnt = 5; cnt --; )
 	{
 		for (int volatile i = 0; i < 3000000; i ++);
-		//memset(x, ret, sizeof(int) * 4096);
-		Scio::printf("%s: this is process %u x=%d\n",
-				ret ? "parent" : "child", Task::getpid(), 0);
+		if (cnt == 3)
+			*x = ret * 54321;
+		Scio::printf("%s: this is process %u x=%d (at %p, phys: %p)\n",
+				ret ? "parent" : "child", Task::getpid(), x[0], x, (void*)Page::current_page_dir->get_physical_addr(x));
 	}
+
+	Scio::printf("%s done\n", ret ? "parent" : "child");
+
+	while(1);
 	
 	cxxsupport_finalize();
 	panic("test");
@@ -156,8 +166,8 @@ void init_timer()
 void timer_tick(Isr_registers_t reg)
 {
 	static int tick;
-	if (tick % 100 == 0)
-		Scio::printf("timer tick %d\n", tick);
+	//if (tick % 100 == 0)
+	//	Scio::printf("timer tick %d\n", tick);
 	tick ++;
 	isr_eoi(reg.int_no);
 	Task::schedule();
