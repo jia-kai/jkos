@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Tue Dec 07 15:25:38 2010 +0800
+# $Date: Tue Dec 07 18:48:42 2010 +0800
 
 #
 # This file is part of JKOS
@@ -20,8 +20,8 @@
 # along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 # 
 
-CXXSOURCES = $(shell find . -name "*.cpp")
-ASMSOURCES = $(shell find . -name "*.s")
+CXXSOURCES = $(shell find src -name "*.cpp")
+ASMSOURCES = $(shell find src -name "*.s")
 OBJ_DIR = obj
 OBJS = $(addprefix $(OBJ_DIR)/,$(CXXSOURCES:.cpp=.o) $(ASMSOURCES:.s=.o))
 DEPFILES = $(OBJS:.o=.d)
@@ -29,7 +29,7 @@ DEPFILES = $(OBJS:.o=.d)
 CXX = g++
 AS = as
 
-INCLUDE_DIR = -I include
+INCLUDE_DIR = -I src/include
 DEFINES = -DDEBUG
 CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qualifiers -Wfloat-equal -Wshadow \
 		   -Wcast-qual  -Wcast-align -Wconversion  -Wlogical-op -Waggregate-return \
@@ -58,9 +58,7 @@ $(OBJ_DIR)/%.o: %.s
 
 sinclude $(DEPFILES)
 
-obj/core/kheap.o: include/page.h
-
-kernel.bin: linker.ld $(OBJS) obj/./core/kheap.o
+kernel.bin: linker.ld $(OBJS)
 	ld -T linker.ld -o kernel.bin $(OBJS)
 
 .PHONY: qemu qemu-dbg clean hg

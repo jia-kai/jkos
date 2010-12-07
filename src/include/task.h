@@ -1,6 +1,6 @@
 /*
  * $File: task.h
- * $Date: Sun Dec 05 19:29:33 2010 +0800
+ * $Date: Tue Dec 07 17:17:28 2010 +0800
  *
  * task scheduling and managing
  */
@@ -26,9 +26,11 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef HEADER_TASK
 #define HEADER_TASK
 
+#include <common.h>
+
 namespace Task
 {
-	typedef unsigned int pid_t;
+	typedef uint32_t pid_t;
 
 	extern void init();
 
@@ -38,6 +40,12 @@ namespace Task
 
 	extern pid_t fork();
 	extern pid_t getpid();
+
+	// whether the current task is kernel code or user program
+	extern bool is_kernel();
+
+	// test whether the virtual address lies in kernel stack
+	extern bool is_in_kernel_stack(uint32_t addr);
 }
 
 #endif // HEADER_TASK

@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Dec 06 21:40:24 2010 +0800
+ * $Date: Tue Dec 07 17:21:34 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -66,11 +66,6 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	asm volatile ("sti");
 
-	asm volatile ("int $30");
-
-	asm volatile ("int $31");
-	asm volatile ("int $30");
-
 	Scio::printf("hello, world!\n");
 
 	/*
@@ -127,16 +122,16 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	delete []ptr;
 	*/
 
-	int *x = new int[4096];
+	//int *x = new int[4096];
 	Task::pid_t ret = Task::fork();
 	Scio::printf("fork returned: %d\n", (int)ret);
 
 	while(1)
 	{
 		for (int volatile i = 0; i < 3000000; i ++);
-		memset(x, ret, sizeof(int) * 4096);
+		//memset(x, ret, sizeof(int) * 4096);
 		Scio::printf("%s: this is process %u x=%d\n",
-				ret ? "parent" : "child", Task::getpid(), x[0]);
+				ret ? "parent" : "child", Task::getpid(), 0);
 	}
 	
 	cxxsupport_finalize();

@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 07 15:28:57 2010 +0800
+ * $Date: Tue Dec 07 17:23:09 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -29,6 +29,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <scio.h>
 #include <descriptor_table.h>
 #include <kheap.h>
+#include <task.h>
 
 #pragma GCC diagnostic ignored "-Wconversion"
 
@@ -41,14 +42,15 @@ Directory_t *Page::current_page_dir;
 static Directory_t *kernel_page_dir;
 
 // stack of usable frames
-static uint32_t *frames, nframes;
+static uint32_t *frames, nframes,
+				*frame_ref_cnt; // frame reference count
 
 // this will be false until Page::init() finished
 static bool init_finished;
 
 static void init_frames(Multiboot_info_t *mbd);
 
-static Table_t *clone_table(const Table_t *src);
+static Table_t *clone_table(Table_t *src, uint32_t addr);
 
 // copy a frame (4kb) from physical address @src to physical address @dest
 static void copy_page_physical(uint32_t dest, uint32_t src);
@@ -62,6 +64,7 @@ void Table_entry_t::alloc(bool user_, bool writable)
 		if (!nframes)
 			panic("no free frame");
 		addr = frames[-- nframes];
+		frame_ref_cnt[addr] = 1;
 		MSG_DEBUG("frame 0x%x allocated", addr);
 		present = 1;
 		rw = writable ? 1 : 0;
@@ -73,8 +76,11 @@ void Table_entry_t::free()
 {
 	if (addr)
 	{
-		frames[nframes ++] = addr;
-		MSG_DEBUG("frame 0x%x freed", addr);
+		if (!(-- frame_ref_cnt[addr]))
+		{
+			frames[nframes ++] = addr;
+			MSG_DEBUG("frame 0x%x freed", addr);
+		}
 		addr = 0;
 		present = 0;
 	}
@@ -122,7 +128,7 @@ uint32_t Directory_t::get_physical_addr(void *addr0, bool alloc, bool user, bool
 	{
 		if (!alloc)
 			return (uint32_t)-1;
-			page->alloc(user, writable);
+		page->alloc(user, writable);
 	}
 	return (page->addr << 12) | (addr & 0xFFF);
 }
@@ -144,7 +150,7 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 				dest->entries[i] = src->entries[i];
 			} else
 			{
-				dest->tables[i] = clone_table(src->tables[i]);
+				dest->tables[i] = clone_table(src->tables[i], i << 22);
 				dest->entries[i] = src->entries[i];
 				dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i], true) >> 12;
 			}
@@ -153,22 +159,33 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	return dest;
 }
 
-Table_t *clone_table(const Table_t *src)
+Table_t *clone_table(Table_t *src, uint32_t base_addr)
 {
 	Table_t *dest = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12));
 	memset(dest, 0, sizeof(Table_t));
 	for (int i = 0; i < 1024; i ++)
 		if (src->pages[i].addr)
 		{
-			// TODO: copy on write
-			dest->pages[i] = src->pages[i];
-			dest->pages[i].addr = 0;
-			dest->pages[i].alloc(src->pages[i].user, src->pages[i].rw);
-
-			copy_page_physical(dest->pages[i].addr << 12, src->pages[i].addr << 12);
+			//if (Task::is_in_kernel_stack(base_addr | (i << 12)))
+			if (1)
+			{
+				base_addr = 1;
+				// we should copy kernel stacks directly instead of using copy-on-write
+				// (otherwise will cause triple fault)
+				dest->pages[i] = src->pages[i];
+				dest->pages[i].alloc(false, true);
+				copy_page_physical(dest->pages[i].addr << 12, src->pages[i].addr << 12);
+			}
+			else
+			{
+				src->pages[i].rw = 0;
+				dest->pages[i] = src->pages[i];
+				frame_ref_cnt[src->pages[i].addr] ++;
+			}
 		}
 	return dest;
 }
+
 
 void Page::init(void *ptr_mbd)
 {
@@ -183,6 +200,9 @@ void Page::init(void *ptr_mbd)
 	init_frames(mbd);
 
 	kheap_init();
+
+	frame_ref_cnt = new uint32_t[frames[0] - frames[nframes - 1] + 1];
+	frame_ref_cnt -= frames[nframes - 1];
 
 	// make sure virtual address and physical address of kernel code and static kernel heap
 	// are the same
@@ -205,11 +225,10 @@ void Page::init(void *ptr_mbd)
 	asm volatile
 	(
 		"mov %%cr0, %%eax\n"
-		"or $0x80000000, %%eax\n"
+		"or $0x80010000, %%eax\n" // PG and WP in CR0
 		"mov %%eax, %%cr0"
 		: : : "eax"
 	);
-
 	init_finished = true;
 	kheap_finish_init();
 
@@ -227,12 +246,33 @@ void page_fault(Isr_registers_t reg)
 	asm volatile("mov %%cr2, %0" : "=r" (addr));
 
 	Table_entry_t *page = current_page_dir->get_page(addr);
-	if (page && !(reg.err_code & 1))
+	if (page)
 	{
-		// XXX: all allocated frames are kernel used and writable
-		// **PERMISSION_CONTROL**
-		page->alloc(false, true);
-		return;
+		if (!(reg.err_code & 1))
+		{
+			// non-present
+			page->alloc(!Task::is_kernel(), true);
+			return;
+		}
+		if (reg.err_code & 2)
+		{
+			// protection violation and write
+			if (Task::is_kernel() == !page->user)
+			{
+				if (!page->addr || !frame_ref_cnt[page->addr])
+					panic("frame reference count error");
+				if (frame_ref_cnt[page->addr] == 1)
+					page->rw = 1;
+				else
+				{
+					addr = page->addr;
+					frame_ref_cnt[addr] --;
+					page->addr = 0;
+					page->alloc(page->user, true);
+					copy_page_physical(page->addr << 12, addr << 12);
+				}
+			}
+		}
 	}
 
 	Scio::printf("page fault: err_code=0x%x", reg.err_code);
@@ -296,7 +336,7 @@ void init_frames(Multiboot_info_t *mbd)
 		mmap_addr += mmap->size + 4;
 	}
 
-	frames = static_cast<uint32_t*>(kmalloc((memsize >> 12) << 2));
+	frames = new uint32_t[memsize >> 12];
 	nframes = 0;
 
 	mmap_addr = mbd->mmap_addr;

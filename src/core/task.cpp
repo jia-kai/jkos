@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 06 19:59:16 2010 +0800
+ * $Date: Tue Dec 07 17:18:00 2010 +0800
  *
  * task scheduling and managing
  */
@@ -247,5 +247,15 @@ pid_t Pid_allocator::get()
 
 void Pid_allocator::free(pid_t)
 {
+}
+
+bool Task::is_kernel()
+{
+	return true;
+}
+
+bool Task::is_in_kernel_stack(uint32_t addr)
+{
+	return addr >= STACK_POS - STACK_SIZE && addr < STACK_POS;
 }
 

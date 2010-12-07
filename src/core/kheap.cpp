@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Sun Dec 05 19:54:26 2010 +0800
+ * $Date: Tue Dec 07 16:12:00 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -231,7 +231,6 @@ void kheap_init()
 
 	for (uint32_t i = b.start; i < KERNEL_HEAP_END; i += 0x1000)
 		Page::current_page_dir->get_page(i, true);
-	// **PERMISSION_CONTROL**
 }
 
 void kheap_finish_init()
