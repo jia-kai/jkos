@@ -1,1 +1,2 @@
-obj/obj/lib/cstring.o: lib/cstring.cpp include/lib/cstring.h
+obj/lib/cstring.o obj/lib/cstring.d: lib/cstring.cpp \
+ include/lib/cstring.h

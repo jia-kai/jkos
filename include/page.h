@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Sun Dec 05 10:59:48 2010 +0800
+ * $Date: Tue Dec 07 15:25:56 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -92,7 +92,7 @@ namespace Page
 		// if the corresponding table does not exist:
 		//		if @make is true, a new table will be allocated
 		//		otherwise NULL is returned
-		Table_entry_t *get_page(uint32_t addr, bool make = false, bool user = true, bool writable = false);
+		Table_entry_t *get_page(uint32_t addr, bool make = false);
 
 		// load this page directory into the CR3 register
 		void enable();

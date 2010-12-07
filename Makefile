@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Sun Dec 05 22:08:12 2010 +0800
+# $Date: Tue Dec 07 15:25:38 2010 +0800
 
 #
 # This file is part of JKOS
@@ -22,8 +22,9 @@
 
 CXXSOURCES = $(shell find . -name "*.cpp")
 ASMSOURCES = $(shell find . -name "*.s")
-OBJS = $(patsubst %.cpp,obj/%.o,$(CXXSOURCES)) $(patsubst %.s,obj/%.o,$(ASMSOURCES))
-DEPFILES = $(patsubst %.o,%.d,$(OBJS))
+OBJ_DIR = obj
+OBJS = $(addprefix $(OBJ_DIR)/,$(CXXSOURCES:.cpp=.o) $(ASMSOURCES:.s=.o))
+DEPFILES = $(OBJS:.o=.d)
 
 CXX = g++
 AS = as
@@ -35,7 +36,6 @@ CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qua
 		   -Wpadded  -Winline -Woverlength-strings \
 		   -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
 		   -fno-stack-protector $(INCLUDE_DIR) $(DEFINES) -g
-OBJ_DIR = obj
 
 hda.img: kernel.bin
 	sudo losetup -o32256 /dev/loop0 hda.img
@@ -44,22 +44,23 @@ hda.img: kernel.bin
 	sudo umount root
 	sudo losetup -d /dev/loop0
 
-obj/%.d: %.cpp
-	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(patsubst %.cpp,obj/%.o,$<)" "$<"  > "$@"
+$(OBJ_DIR)/%.d: %.cpp
+	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(<:.cpp=.o) $(OBJ_DIR)/$(<:.cpp=.d)" "$<"  > "$@"
 
-obj/%.d: %.s
-	echo "$(OBJ_DIR)/$(patsubst %.s,obj/%.o,$<): $<" > "$@"
+$(OBJ_DIR)/%.d: %.s
+	echo "$(OBJ_DIR)/$(<:.s=.o): $<" > "$@"
 
-obj/%.o: %.cpp
+$(OBJ_DIR)/%.o: %.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-obj/%.o: %.s
+$(OBJ_DIR)/%.o: %.s
 	$(AS) $< -o $@
-
 
 sinclude $(DEPFILES)
 
-kernel.bin: linker.ld $(OBJS)
+obj/core/kheap.o: include/page.h
+
+kernel.bin: linker.ld $(OBJS) obj/./core/kheap.o
 	ld -T linker.ld -o kernel.bin $(OBJS)
 
 .PHONY: qemu qemu-dbg clean hg
@@ -70,7 +71,8 @@ qemu-dbg: kernel.bin
 	qemu --kernel kernel.bin -S -s 
 
 clean:
-	rm -f kernel.bin $(OBJS)
+	rm -rf kernel.bin
+	find obj -type f -delete
 
 hg:
 	hg addremove

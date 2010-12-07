@@ -1,1 +1,1 @@
-obj/obj/core/asm/interrupt.o: core/asm/interrupt.s
+obj/core/asm/interrupt.o: core/asm/interrupt.s

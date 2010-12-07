@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Mon Dec 06 18:15:39 2010 +0800
+ * $Date: Tue Dec 07 15:28:57 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -80,7 +80,7 @@ void Table_entry_t::free()
 	}
 }
 
-Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool user, bool writable)
+Table_entry_t* Directory_t::get_page(uint32_t addr, bool make)
 {
 	addr >>= 12;
 	int tb_idx = addr >> 10,
@@ -95,8 +95,9 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make, bool user, bool w
 				0, sizeof(Table_t));
 
 		entries[tb_idx].present = 1;
-		entries[tb_idx].rw = writable ? 1 : 0;
-		entries[tb_idx].user = user ? 1 : 0;
+		entries[tb_idx].rw = 1;
+		entries[tb_idx].user = 1;
+		// we always set rw and user bit, so the actual permission is controled by the page
 		entries[tb_idx].addr = get_physical_addr(tables[tb_idx], true) >> 12;
 	}
 	return &(tables[tb_idx]->pages[tb_offset]);
@@ -138,6 +139,7 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 		{
 			if (kernel_page_dir->tables[i] == src->tables[i])
 			{
+				// we just link kernel tables
 				dest->tables[i] = src->tables[i];
 				dest->entries[i] = src->entries[i];
 			} else
@@ -186,11 +188,10 @@ void Page::init(void *ptr_mbd)
 	// are the same
 	for (uint32_t i = 0; i < kheap_get_size_pre_init(); i += 0x1000)
 	{
-		// **PERMISSION_CONTROL**
 		Table_entry_t *page = kernel_page_dir->get_page(i, true);
 		page->present = 1;
-		page->rw = 0;
-		page->user = 1;
+		page->rw = 1;
+		page->user = 0;
 		page->addr = i >> 12;
 	}
 

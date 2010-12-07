@@ -1,1 +1,1 @@
-obj/obj/core/asm/misc.o: core/asm/misc.s
+obj/core/asm/misc.o: core/asm/misc.s
