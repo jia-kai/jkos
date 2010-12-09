@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Fri Dec 03 11:19:08 2010 +0800
+ * $Date: Thu Dec 09 12:00:02 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -30,10 +30,12 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <lib/cstring.h>
 #include <port.h>
 #include <scio.h>
+#include <asm.h>
 
-// defined in loader.s
+// defined in misc.s
 extern "C" void gdt_flush(uint32_t);
 extern "C" void idt_flush(uint32_t);
+extern "C" void tss_flush();
 
 // defined in interrupt.s
 extern "C" uint32_t isr_callback_table[256];
@@ -49,6 +51,26 @@ arguments:
 	offset2 - same for slave PIC: offset2..offset2+7
 */
 static void remap_PIC(uint8_t offset1, uint8_t offset2);
+
+
+struct TSS_entry_t
+{
+	uint32_t
+		prev_tss,
+		esp0, ss0, // stack pointer and segment to load when entering kernel mode
+		esp1, ss1,
+		esp2, ss2,
+		cr3,
+		eip, eflags,
+		eax, ecx, edx, ebx,
+		esp, ebp,
+		esi, edi,
+		es, cs, ss, ds, fs, gs,
+		ldt;
+	uint16_t reserved, iomap_base;
+} __attribute__((packed));
+static TSS_entry_t	tss_entry;
+
 
 #define LOOP_ALL_INTERRUPT(func) \
 	func(0); func(1); func(2); func(3); func(4); func(5); func(6); func(7); \
@@ -73,7 +95,7 @@ void init_descriptor_tables()
 
 void init_gdt()
 {
-	static GDT_entry_t	gdt_entries[5];
+	static GDT_entry_t	gdt_entries[6];
 	static GDT_ptr_t	gdt_ptr;
 
 	gdt_ptr.limit = sizeof(gdt_entries) - 1;
@@ -93,7 +115,15 @@ void init_gdt()
 	// usermode data segment
 	gdt_entries[4].set(0, 0xFFFFFFFF, 0b11110010, 0b1100);
 
+	// TSS
+	memset(&tss_entry, 0, sizeof(tss_entry));
+	tss_entry.ss0 = KERNEL_DATA_SELECTOR;
+	tss_entry.cs = KERNEL_CODE_SELECTOR | 0x03;
+	tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = KERNEL_DATA_SELECTOR | 0x03;
+	gdt_entries[5].set((uint32_t)&tss_entry, ((uint32_t)&tss_entry) + sizeof(TSS_entry_t), 0b11101001, 0);
+
 	gdt_flush((uint32_t)&gdt_ptr);
+	tss_flush();
 }
 
 void init_idt()
@@ -224,5 +254,10 @@ void isr_eoi(int int_no)
 	if (int_no >= 40)
 		Port::outb(PIC2_COMMAND, 0x20); // send reset signal to slave
 	Port::outb(PIC1_COMMAND, 0x20); // send reset signal to master
+}
+
+void set_kernel_stack(uint32_t addr)
+{
+	tss_entry.esp0 = addr;
 }
 

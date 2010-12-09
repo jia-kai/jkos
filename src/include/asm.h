@@ -1,8 +1,8 @@
 /*
- * $File: task.h
- * $Date: Wed Dec 08 19:03:32 2010 +0800
+ * $File: asm.h
+ * $Date: Thu Dec 09 10:54:32 2010 +0800
  *
- * task scheduling and managing
+ * definitions for asm functions
  */
 /*
 This file is part of JKOS
@@ -23,33 +23,16 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_TASK
-#define HEADER_TASK
+#ifndef HEADER_ASN
+#define HEADER_ASN
 
-#include <common.h>
+#define KERNEL_CODE_SELECTOR	0x08
+#define KERNEL_DATA_SELECTOR	0x10
+#define USER_CODE_SELECTOR		0x18
+#define USER_DATA_SELECTOR		0x20
 
-namespace Task
-{
-	typedef uint32_t pid_t;
-
-	extern void init();
-
-	// called by timer hook
-	extern void schedule();
+#define TSS_DESCRIPTOR_SELECTOR	0x28
 
 
-	extern pid_t fork();
-	extern pid_t getpid();
-
-	// whether the current task is kernel code or user program
-	extern bool is_kernel();
-
-	// test whether the virtual address lies in kernel stack
-	extern bool is_in_kernel_stack(uint32_t addr);
-
-	// switch to user mode and continue execution at address @addr
-	extern void switch_to_user_mode(uint32_t addr);
-}
-
-#endif // HEADER_TASK
+#endif
 

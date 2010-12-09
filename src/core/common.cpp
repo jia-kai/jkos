@@ -1,6 +1,6 @@
 /*
  * $File: common.cpp
- * $Date: Fri Dec 03 15:45:03 2010 +0800
+ * $Date: Wed Dec 08 19:11:35 2010 +0800
  *
  * some common definitions and functions
  */
@@ -64,7 +64,14 @@ static void die()
 	Port::outb(0x42, (uint8_t)(count >> 8));
 	Port::outb(0x61, port_0x61_val | 3);
 
-	asm volatile ("cli");
-	for (; ;);
+	asm volatile
+	(
+		"cli\n"
+		"1:\n"
+		"hlt\n"
+		"jmp 1b"
+	);
+
+	for (; ;); // just to emit the warning
 }
 

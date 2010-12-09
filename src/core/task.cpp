@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Tue Dec 07 17:18:00 2010 +0800
+ * $Date: Wed Dec 08 20:17:17 2010 +0800
  *
  * task scheduling and managing
  */
@@ -28,6 +28,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <page.h>
 #include <scio.h>
 #include <lib/cstring.h>
+#include <asm.h>
 
 using namespace Task;
 
@@ -257,5 +258,31 @@ bool Task::is_kernel()
 bool Task::is_in_kernel_stack(uint32_t addr)
 {
 	return addr >= STACK_POS - STACK_SIZE && addr < STACK_POS;
+}
+
+void Task::switch_to_user_mode(uint32_t addr)
+{
+	asm volatile
+	(
+		"cli\n"
+		"mov %0, %%ax\n"		// set user mode data selector
+		"mov %%ax, %%ds\n"
+		"mov %%ax, %%es\n"
+		"mov %%ax, %%fs\n"
+		"mov %%ax, %%gs\n"
+
+		"mov %%esp, %%eax\n"
+		"pushl %0\n"
+		"pushl %%eax\n"
+		"pushf\n"
+
+		"pop %%eax\n"
+		"or $0x200, %%eax\n"	// set the IF flag
+		"push %%eax\n"
+
+		"pushl %1\n"			// set user mode code selector
+		"pushl %2\n"
+		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
+	);
 }
 

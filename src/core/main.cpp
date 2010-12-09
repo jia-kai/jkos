@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 07 19:32:51 2010 +0800
+ * $Date: Wed Dec 08 20:13:55 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -51,15 +51,16 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 {
 	init_descriptor_tables();
 	Scio::init();
-	Page::init(mbd);
-	Task::init();
-	cxxsupport_init();
 
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
 	{
 		Scio::printf("invalid magic: 0x%x\n", magic);
 		return;
 	}
+
+	Page::init(mbd);
+	Task::init();
+	cxxsupport_init();
 
 	init_timer();
 	isr_register(ISR_GET_NUM_BY_IRQ(1), isr_kbd);

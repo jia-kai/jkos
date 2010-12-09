@@ -1,8 +1,8 @@
 /*
- * $File: task.h
- * $Date: Wed Dec 08 19:03:32 2010 +0800
+ * $File: syscall.h
+ * $Date: Thu Dec 09 11:52:45 2010 +0800
  *
- * task scheduling and managing
+ * interface for implementing system calls
  */
 /*
 This file is part of JKOS
@@ -23,33 +23,23 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_TASK
-#define HEADER_TASK
+#ifndef HEADER_SYSCALL
+#define HEADER_SYSCALL
 
-#include <common.h>
-
-namespace Task
+namespace Syscall
 {
-	typedef uint32_t pid_t;
-
 	extern void init();
 
-	// called by timer hook
-	extern void schedule();
+#define DEFN_SYSCALL1(num, fn, P0) \
+	static inline int fn(P0 p0) \
+	{ \
+		int a; \
+		asm volatile ("mov %1, %%eax\nint $0x80" : "=a"(a) : "i"(num), "b"((int)p0)); \
+		return a; \
+	}
 
-
-	extern pid_t fork();
-	extern pid_t getpid();
-
-	// whether the current task is kernel code or user program
-	extern bool is_kernel();
-
-	// test whether the virtual address lies in kernel stack
-	extern bool is_in_kernel_stack(uint32_t addr);
-
-	// switch to user mode and continue execution at address @addr
-	extern void switch_to_user_mode(uint32_t addr);
+	DEFN_SYSCALL1(0, puts, const char *);
 }
 
-#endif // HEADER_TASK
+#endif // HEADER_SYSCALL
 

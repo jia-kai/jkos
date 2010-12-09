@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Tue Dec 07 18:48:42 2010 +0800
+# $Date: Wed Dec 08 19:46:15 2010 +0800
 
 #
 # This file is part of JKOS
@@ -21,13 +21,13 @@
 # 
 
 CXXSOURCES = $(shell find src -name "*.cpp")
-ASMSOURCES = $(shell find src -name "*.s")
+ASMSOURCES = $(shell find src -name "*.S")
 OBJ_DIR = obj
-OBJS = $(addprefix $(OBJ_DIR)/,$(CXXSOURCES:.cpp=.o) $(ASMSOURCES:.s=.o))
+OBJS = $(addprefix $(OBJ_DIR)/,$(CXXSOURCES:.cpp=.o) $(ASMSOURCES:.S=.o))
 DEPFILES = $(OBJS:.o=.d)
 
 CXX = g++
-AS = as
+CC = gcc
 
 INCLUDE_DIR = -I src/include
 DEFINES = -DDEBUG
@@ -47,14 +47,14 @@ hda.img: kernel.bin
 $(OBJ_DIR)/%.d: %.cpp
 	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(<:.cpp=.o) $(OBJ_DIR)/$(<:.cpp=.d)" "$<"  > "$@"
 
-$(OBJ_DIR)/%.d: %.s
-	echo "$(OBJ_DIR)/$(<:.s=.o): $<" > "$@"
+$(OBJ_DIR)/%.d: %.S
+	echo "$(OBJ_DIR)/$(<:.S=.o): $<" > "$@"
 
 $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-$(OBJ_DIR)/%.o: %.s
-	$(AS) $< -o $@
+$(OBJ_DIR)/%.o: %.S
+	$(CC) $(INCLUDE_DIR) $(DEFINES) -c $< -o $@
 
 sinclude $(DEPFILES)
 
