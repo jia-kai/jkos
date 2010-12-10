@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Thu Dec 09 12:00:02 2010 +0800
+ * $Date: Thu Dec 09 21:58:02 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -78,7 +78,8 @@ static TSS_entry_t	tss_entry;
 	func(16); func(17); func(18); func(19); func(20); func(21); func(22); func(23); \
 	func(24); func(25); func(26); func(27); func(28); func(29); func(30); func(31); \
 	func(32); func(33); func(34); func(35); func(36); func(37); func(38); func(39); \
-	func(40); func(41); func(42); func(43); func(44); func(45); func(46); func(47);
+	func(40); func(41); func(42); func(43); func(44); func(45); func(46); func(47); \
+	func(0x80);
 
 #define EXTERN_ISR(n) \
 	extern "C" void isr##n()
@@ -137,7 +138,7 @@ void init_idt()
 	memset(idt_entries, 0, sizeof(idt_entries));
 
 	const uint32_t
-		IDT_SEL = 0x08,
+		IDT_SEL = KERNEL_CODE_SELECTOR,
 		IDT_FLAG = 0b10001110;
 
 	for (int i = 0; i < 256; i ++)
@@ -152,6 +153,8 @@ void init_idt()
 	LOOP_ALL_INTERRUPT(ADD_ISR)
 
 #undef ADD_IRQ
+
+	idt_entries[0x80].set((uint32_t)isr0x80, IDT_SEL, IDT_FLAG | 0b01100000);
 
 	idt_flush((uint32_t)&idt_ptr);
 }
@@ -172,6 +175,8 @@ void isr_unhandled(Isr_registers_t reg)
 		// unhandled IRQ interrupt
 		isr_eoi(reg.int_no);
 	}
+
+	panic("unhandled interrupt");
 }
 
 void GDT_entry_t::set(uint32_t base, uint32_t limit, uint8_t access_, uint8_t flag)

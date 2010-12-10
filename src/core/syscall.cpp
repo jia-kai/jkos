@@ -1,6 +1,6 @@
 /*
  * $File: syscall.cpp
- * $Date: Thu Dec 09 11:56:28 2010 +0800
+ * $Date: Thu Dec 09 17:05:15 2010 +0800
  *
  * interface for implementing system calls
  */
@@ -27,9 +27,16 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <descriptor_table.h>
 #include <scio.h>
 
+static int test(uint32_t arg)
+{
+	Scio::printf("called from user mode! arg=0x%x\n", arg);
+	return 1;
+}
+
 static uint32_t syscall_addr[] =
 {
-	(uint32_t)Scio::puts
+	(uint32_t)Scio::puts,
+	(uint32_t)test
 };
 const uint32_t NR_SYSCALLS = sizeof(syscall_addr) / sizeof(syscall_addr[0]);
 

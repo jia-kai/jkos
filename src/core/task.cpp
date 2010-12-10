@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Wed Dec 08 20:17:17 2010 +0800
+ * $Date: Thu Dec 09 22:10:32 2010 +0800
  *
  * task scheduling and managing
  */
@@ -27,17 +27,21 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <common.h>
 #include <page.h>
 #include <scio.h>
-#include <lib/cstring.h>
 #include <asm.h>
+#include <kheap.h>
+#include <descriptor_table.h>
+#include <lib/cstring.h>
 
 using namespace Task;
 
+const uint32_t KERNEL_STACK_SIZE = 16 * 1024;
 struct Task_t
 {
 	Task::pid_t id;
 	uint32_t esp, ebp, eip;
 	Page::Directory_t *page_dir;
 
+	uint32_t kernel_stack; // kernel stack location in the TSS
 	volatile Task_t *next;
 	Task_t(Page::Directory_t *dir);
 };
@@ -55,12 +59,13 @@ struct Task_queue
 
 const uint32_t
 	INIT_STACK_SIZE = 1024 * 16,
-	STACK_POS = 0xA0000000u, STACK_SIZE = 16 * 1024;
+	STACK_POS = 0xA0000000u, STACK_SIZE = 4 * 1024;
 
 // defined in loader.s
 extern "C" uint32_t initial_stack_pointer;
 
 static volatile Task_t *current_task;
+static bool switch_to_user_mode_called = false;
 
 
 
@@ -92,6 +97,8 @@ void Task::init()
 	// initialise the first task (kernel task)
 	current_task = new Task_t(Page::current_page_dir);
 	Queue::ready.append(current_task);
+
+	set_kernel_stack(current_task->kernel_stack + KERNEL_STACK_SIZE);
 
 	MSG_INFO("tasking initialized");
 }
@@ -151,6 +158,8 @@ void Task::schedule()
 	ebp = current_task->ebp;
 	eip = current_task->eip;
 
+	set_kernel_stack(current_task->kernel_stack + KERNEL_STACK_SIZE);
+
 	Page::current_page_dir = current_task->page_dir;
 	asm volatile
 	(
@@ -194,8 +203,14 @@ void Task_queue::append(volatile Task_t *task)
 
 Task_t::Task_t(Page::Directory_t *dir) :
 	id(Pid_allocator::get()), esp(0), ebp(0), eip(0),
-	page_dir(dir), next(NULL)
+	page_dir(dir),
+	next(NULL)
 {
+	kernel_stack = (uint32_t)kmalloc(KERNEL_STACK_SIZE, 4);
+	for (uint32_t i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
+		Page::current_page_dir->get_page(kernel_stack + i, true)->alloc(false, true);
+	Page::current_page_dir->get_page(kernel_stack + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
+	set_kernel_stack(kernel_stack + KERNEL_STACK_SIZE);
 }
 
 void move_stack()
@@ -252,7 +267,7 @@ void Pid_allocator::free(pid_t)
 
 bool Task::is_kernel()
 {
-	return true;
+	return !switch_to_user_mode_called;
 }
 
 bool Task::is_in_kernel_stack(uint32_t addr)
@@ -260,8 +275,9 @@ bool Task::is_in_kernel_stack(uint32_t addr)
 	return addr >= STACK_POS - STACK_SIZE && addr < STACK_POS;
 }
 
-void Task::switch_to_user_mode(uint32_t addr)
+void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 {
+	switch_to_user_mode_called = true;
 	asm volatile
 	(
 		"cli\n"
@@ -271,18 +287,17 @@ void Task::switch_to_user_mode(uint32_t addr)
 		"mov %%ax, %%fs\n"
 		"mov %%ax, %%gs\n"
 
-		"mov %%esp, %%eax\n"
 		"pushl %0\n"
-		"pushl %%eax\n"
+		"pushl %1\n"
 		"pushf\n"
 
 		"pop %%eax\n"
 		"or $0x200, %%eax\n"	// set the IF flag
 		"push %%eax\n"
 
-		"pushl %1\n"			// set user mode code selector
-		"pushl %2\n"
-		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
+		"pushl %2\n"			// set user mode code selector
+		"pushl %3\n"
+		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
 	);
 }
 

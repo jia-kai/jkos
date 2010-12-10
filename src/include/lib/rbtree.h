@@ -1,6 +1,6 @@
 /*
  * $File: rbtree.h
- * $Date: Thu Dec 02 11:12:04 2010 +0800
+ * $Date: Thu Dec 09 15:44:39 2010 +0800
  *
  * red-black tree template
  *
@@ -313,8 +313,6 @@ void Rbt<Key_t>::remove_bottom(Node *&n_ref)
 		s->ch[!dir]->set_black();
 		rotate(get_ref(p), dir);
 		return;
-
-#undef INIT_PS
 	}
 
 	n->set_black();

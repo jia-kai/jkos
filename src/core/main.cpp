@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Wed Dec 08 20:13:55 2010 +0800
+ * $Date: Fri Dec 10 11:26:37 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -31,6 +31,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <common.h>
 #include <kheap.h>
 #include <task.h>
+#include <syscall.h>
 #include <lib/cxxsupport.h>
 #include <lib/cstring.h>
 
@@ -60,6 +61,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	Page::init(mbd);
 	Task::init();
+	Syscall::init();
 	cxxsupport_init();
 
 	init_timer();
@@ -123,28 +125,31 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	delete []ptr;
 	*/
 
-	Page::current_page_dir->get_page(0x1A1A1A10, true);
-	Scio::puts("page got\n");
-	int *x = (int*)0x1A1A1A10;
-	*x = 12345;
-	Scio::puts("calling fork\n");
-	Task::pid_t ret = Task::fork();
-	Scio::printf("fork returned: %d\n", (int)ret);
-	// memset(x, ret, sizeof(int) * 1024);
+	uint32_t uaddr = 0x54323456;
+	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
+	uint32_t fbegin, fend;
+	asm volatile
+	(
+		"jmp user_func_end\n"
+		"user_func_begin:\n"
+		"hlt\n"
+		"mov $1, %%eax\n"
+		"mov %%esp, %%ebx\n"
+		"int $0x80\n"
+		"movb $'A', 0x2\n"
+		"int $0x80\n"
+		"1: jmp 1b\n"
+		"user_func_end:\n"
+		"movl $user_func_begin, %0\n"
+		"movl $user_func_end, %1\n"
+		: "=g"(fbegin), "=g"(fend)
+	);
+	memcpy((void*)uaddr, (void*)fbegin, fend - fbegin);
 
-	for (int cnt = 5; cnt --; )
-	{
-		for (int volatile i = 0; i < 3000000; i ++);
-		if (cnt == 3)
-			*x = ret * 54321;
-		Scio::printf("%s: this is process %u x=%d (at %p, phys: %p)\n",
-				ret ? "parent" : "child", Task::getpid(), x[0], x, (void*)Page::current_page_dir->get_physical_addr(x));
-	}
+	Scio::printf("esp=0x%x\n", uaddr + 0x1000);
 
-	Scio::printf("%s done\n", ret ? "parent" : "child");
+	Task::switch_to_user_mode(uaddr, uaddr + 0x1000);
 
-	while(1);
-	
 	cxxsupport_finalize();
 	panic("test");
 
@@ -170,6 +175,8 @@ void timer_tick(Isr_registers_t reg)
 	//if (tick % 100 == 0)
 	//	Scio::printf("timer tick %d\n", tick);
 	tick ++;
+	// XXX: no task schedule
+	return;
 	isr_eoi(reg.int_no);
 	Task::schedule();
 }

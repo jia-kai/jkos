@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 07 19:29:40 2010 +0800
+ * $Date: Thu Dec 09 22:07:07 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -259,7 +259,10 @@ void page_fault(Isr_registers_t reg)
 			if (Task::is_kernel() == !page->user)
 			{
 				if (!page->addr || !frame_ref_cnt[page->addr])
-					panic("frame reference count error");
+				{
+					Scio::printf("frame reference count error\n");
+					goto error;
+				}
 				if (frame_ref_cnt[page->addr] == 1)
 					page->rw = 1;
 				else
@@ -274,6 +277,8 @@ void page_fault(Isr_registers_t reg)
 			}
 		}
 	}
+
+error:
 
 	Scio::printf("page fault: entry_addr=%p requestd_addr=%p\nerr_code=0x%x",
 			page, (void*)addr, reg.err_code);
