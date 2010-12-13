@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Thu Dec 09 22:10:32 2010 +0800
+ * $Date: Mon Dec 13 15:48:41 2010 +0800
  *
  * task scheduling and managing
  */
@@ -40,6 +40,8 @@ struct Task_t
 	Task::pid_t id;
 	uint32_t esp, ebp, eip;
 	Page::Directory_t *page_dir;
+
+	int errno; // saved error number of current task
 
 	uint32_t kernel_stack; // kernel stack location in the TSS
 	volatile Task_t *next;
@@ -299,5 +301,10 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 		"pushl %3\n"
 		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
 	);
+}
+
+void set_errno(int errno)
+{
+	current_task->errno = errno;
 }
 

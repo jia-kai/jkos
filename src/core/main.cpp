@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 10 11:26:37 2010 +0800
+ * $Date: Fri Dec 10 11:57:32 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -132,12 +132,11 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	(
 		"jmp user_func_end\n"
 		"user_func_begin:\n"
-		"hlt\n"
 		"mov $1, %%eax\n"
-		"mov %%esp, %%ebx\n"
+		"mov %%ds, %%ebx\n"
+		"iret\n"
 		"int $0x80\n"
-		"movb $'A', 0x2\n"
-		"int $0x80\n"
+		"movl $1, 0x2\n"
 		"1: jmp 1b\n"
 		"user_func_end:\n"
 		"movl $user_func_begin, %0\n"

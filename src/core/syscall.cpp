@@ -1,6 +1,6 @@
 /*
  * $File: syscall.cpp
- * $Date: Thu Dec 09 17:05:15 2010 +0800
+ * $Date: Fri Dec 10 11:30:50 2010 +0800
  *
  * interface for implementing system calls
  */
@@ -29,7 +29,9 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 static int test(uint32_t arg)
 {
-	Scio::printf("called from user mode! arg=0x%x\n", arg);
+	uint32_t cs;
+	asm volatile ("mov %%cs, %0" : "=g"(cs));
+	Scio::printf("called from user mode! arg=0x%x cs=0x%x\n", arg, cs);
 	return 1;
 }
 
