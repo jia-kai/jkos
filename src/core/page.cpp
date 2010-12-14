@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Thu Dec 09 22:07:07 2010 +0800
+ * $Date: Tue Dec 14 20:23:58 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -190,6 +190,9 @@ void Page::init(void *ptr_mbd)
 {
 	Multiboot_info_t *mbd = static_cast<Multiboot_info_t*>(ptr_mbd);
 	kassert(mbd->flags & MULTIBOOT_INFO_MEM_MAP);
+
+	if (mbd->mods_count)
+		kheap_preserve_mem((*(uint32_t*)(mbd->mods_addr + 4)) + 4);
 
 	memset(
 			kernel_page_dir = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12)),

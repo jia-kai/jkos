@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Tue Dec 07 16:12:00 2010 +0800
+ * $Date: Tue Dec 14 20:23:34 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -209,6 +209,12 @@ void kfree(void *addr)
 uint32_t kheap_get_size_pre_init()
 {
 	return kheap_static_end;
+}
+
+void kheap_preserve_mem(uint32_t addr)
+{
+	if (addr > kheap_static_end)
+		kheap_static_end = addr;
 }
 
 void* kmalloc_pre_init(uint32_t size, int palign)

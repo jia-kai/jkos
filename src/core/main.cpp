@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Fri Dec 10 11:57:32 2010 +0800
+ * $Date: Tue Dec 14 17:42:25 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -32,6 +32,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <task.h>
 #include <syscall.h>
+#include <drv/ramdisk.h>
 #include <lib/cxxsupport.h>
 #include <lib/cstring.h>
 
@@ -125,6 +126,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	delete []ptr;
 	*/
 
+	/*
 	uint32_t uaddr = 0x54323456;
 	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
 	uint32_t fbegin, fend;
@@ -148,6 +150,20 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	Scio::printf("esp=0x%x\n", uaddr + 0x1000);
 
 	Task::switch_to_user_mode(uaddr, uaddr + 0x1000);
+	*/
+
+	if (mbd->mods_count)
+	{
+		uint32_t start = *(uint32_t*)mbd->mods_addr,
+				 end = *(uint32_t*)(mbd->mods_addr + 4);
+
+		MSG_INFO("ramdisk found: start=0x%x end=0x%x", start, end);
+
+		Fs::Node_file *file = ramdisk_get_file_node(start, end);
+		char buf[256];
+		file->read(buf, 256);
+		Scio::printf("ramdisk: %s\n", buf);
+	}
 
 	cxxsupport_finalize();
 	panic("test");

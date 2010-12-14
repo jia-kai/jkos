@@ -1,6 +1,6 @@
 /*
  * $File: base.cpp
- * $Date: Mon Dec 13 15:51:43 2010 +0800
+ * $Date: Tue Dec 14 17:41:44 2010 +0800
  *
  * file system base class
  */
@@ -26,6 +26,16 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <fs/base.h>
 #include <errno.h>
 
+Fs::Node_dir* Fs::Node_file::get_mount_point() const
+{
+	return mount_point;
+}
+
+void Fs::Node_file::set_mount_point(Node_dir *ptr)
+{
+	mount_point = ptr;
+}
+
 Fs::Node_dir* Fs::Node_file::get_dir()
 {
 	set_errno(ENOTSUP);
@@ -50,7 +60,7 @@ ssize_t Fs::Node_file::write(const void *, size_t )
 	return -1;
 }
 
-int Fs::Node_file::ioctl(int , ...)
+int Fs::Node_file::ioctl(uint32_t, uint32_t)
 {
 	set_errno(ENOTSUP);
 	return -1;
@@ -64,7 +74,14 @@ int Fs::Node_file::stat(Stat_t *)
 
 void Fs::Node_file::close()
 {
-	set_errno(ENOTSUP);
+}
+
+Fs::Node_file::Node_file() : mount_point(NULL)
+{
+}
+
+Fs::Node_file::~Node_file()
+{
 }
 
 bool Fs::Dirent_t::next()
@@ -72,6 +89,21 @@ bool Fs::Dirent_t::next()
 	set_errno(ENOTSUP);
 	return false;
 }
+
+Fs::Node_dir::Node_dir() : mount_point(NULL)
+{
+}
+
+Fs::Node_dir* Fs::Node_dir::get_mount_point() const
+{
+	return mount_point;
+}
+
+void Fs::Node_dir::set_mount_point(Node_dir *ptr)
+{
+	mount_point = ptr;
+}
+
 
 Fs::Node_file* Fs::Node_dir::openf(const char *)
 {
@@ -104,6 +136,12 @@ int Fs::Node_dir::unlink(const char *)
 }
 
 int Fs::Node_dir::link(Node_file *, const char *)
+{
+	set_errno(ENOTSUP);
+	return -1;
+}
+
+int Fs::Node_dir::symlink(const char *, const char *)
 {
 	set_errno(ENOTSUP);
 	return -1;
@@ -147,6 +185,15 @@ Fs::Node_dir* Fs::Node_dir::get_par()
 
 void Fs::Node_dir::close()
 {
+}
+
+int Fs::Fs::mv(const char *, const char *)
+{
 	set_errno(ENOTSUP);
+	return -1;
+}
+
+Fs::Node_dir::~Node_dir()
+{
 }
 

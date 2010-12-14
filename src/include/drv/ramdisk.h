@@ -1,8 +1,8 @@
 /*
- * $File: asm.h
- * $Date: Tue Dec 14 15:42:28 2010 +0800
+ * $File: ramdisk.h
+ * $Date: Tue Dec 14 17:35:45 2010 +0800
  *
- * definitions for asm functions
+ * RAM disk
  */
 /*
 This file is part of JKOS
@@ -23,16 +23,14 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_ASM
-#define HEADER_ASM
+#ifndef HEADER_RAMDISK
+#define HEADER_RAMDISK
 
-#define KERNEL_CODE_SELECTOR	0x08
-#define KERNEL_DATA_SELECTOR	0x10
-#define USER_CODE_SELECTOR		0x18
-#define USER_DATA_SELECTOR		0x20
+#include <fs/base.h>
+#include <common.h>
 
-#define TSS_DESCRIPTOR_SELECTOR	0x28
+// get a ramdisk file in the momory address [start, end)
+// the node is created by new operator and should be freed by delete
+Fs::Node_file* ramdisk_get_file_node(uint32_t start, uint32_t end);
 
-
-#endif // HEADER_ASM
-
+#endif

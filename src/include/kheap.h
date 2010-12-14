@@ -1,6 +1,6 @@
 /*
  * $File: kheap.h
- * $Date: Sat Dec 04 20:25:15 2010 +0800
+ * $Date: Tue Dec 14 20:22:58 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -44,6 +44,7 @@ extern void kfree(void *ptr);
  */
 extern void kheap_init();
 extern void kheap_finish_init();
+extern void kheap_preserve_mem(uint32_t addr);
 
 /*
  * get static kernel heap usage

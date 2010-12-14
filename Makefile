@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Mon Dec 13 15:51:57 2010 +0800
+# $Date: Tue Dec 14 17:24:32 2010 +0800
 
 #
 # This file is part of JKOS
@@ -36,10 +36,11 @@ CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qua
 		   -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \
 		   -fno-stack-protector $(INCLUDE_DIR) $(DEFINES) -g
 
-hda.img: kernel.bin
+hda.img: kernel.bin initrd
 	sudo losetup -o32256 /dev/loop0 hda.img
 	sudo mount /dev/loop0 root
 	sudo cp -av kernel.bin root
+	sudo cp -av initrd root
 	sudo umount root
 	sudo losetup -d /dev/loop0
 
