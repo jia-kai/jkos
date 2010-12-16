@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 14 17:42:25 2010 +0800
+ * $Date: Thu Dec 16 17:19:25 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -44,8 +44,9 @@ static int volatile last_key;
 
 static void wait_key()
 {
-	last_key = 0;
 	Scio::printf("press any key to continue...\n");
+	for (int volatile i = 0; i < 10000000; i ++);
+	last_key = 0;
 	while (!last_key);
 }
 
@@ -72,14 +73,14 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	Scio::printf("hello, world!\n");
 
+
 	/*
 	volatile int *x = (int*)0xF000000F;
 	*x = 0;
 	*/
 
-	// wait_key();
+	wait_key();
 	
-	/*
 	for (int l = 0; l < 3; l ++)
 	{
 		Scio::printf("\n\nLoop %d:\n", l);
@@ -104,7 +105,6 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 		}
 	}
 
-	*/
 
 	/*
 	for (int i = 0; i < 3; i ++)
@@ -188,10 +188,8 @@ void timer_tick(Isr_registers_t reg)
 {
 	static int tick;
 	//if (tick % 100 == 0)
-	//	Scio::printf("timer tick %d\n", tick);
+	// Scio::printf("timer tick %d\n", tick);
 	tick ++;
-	// XXX: no task schedule
-	return;
 	isr_eoi(reg.int_no);
 	Task::schedule();
 }
