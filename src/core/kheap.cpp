@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Thu Dec 16 17:06:10 2010 +0800
+ * $Date: Fri Dec 17 18:53:13 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -131,6 +131,11 @@ void* kmalloc(uint32_t size, int palign)
 			tree_start.insert(nblk);
 		}
 
+		uint32_t alloc_start = (start - sizeof(Block_t)) & 0xFFFFF000,
+				 alloc_end = get_aligned(start + size, 12);
+		for (uint32_t i = alloc_start; i < alloc_end; i += 0x1000)
+			Page::current_page_dir->get_page(i, false)->allocable = true;
+
 		memcpy((void*)(start - sizeof(Block_t)), &got, sizeof(Block_t));
 
 		return (void*)start;
@@ -145,8 +150,8 @@ void kfree(void *addr)
 	if (blk.start < KERNEL_HEAP_BEGIN || blk.start + blk.size > KERNEL_HEAP_END)
 		panic("trting to free invalid memory: addr=%p", addr);
 
-	uint32_t free_start = blk.start & 0xFFFFF000,
-			 free_end = get_aligned(blk.start + blk.size, 12);
+	uint32_t free_start = blk.start,
+			 free_end = blk.start + blk.size;
 	// memory address range to be freed later
 
 	Rbt<Block_start_t>::Node *ptr = tree_start.find_le(blk);
@@ -160,7 +165,7 @@ void kfree(void *addr)
 
 		if (got.start + got.size == blk.start)
 		{
-			free_start = max(free_start, got.start);
+			free_start = max(free_start & 0xFFFFF000, got.start);
 
 			tree_start.erase(ptr);
 			tree_size.erase(tree_size.find_ge(got));
@@ -180,7 +185,7 @@ void kfree(void *addr)
 
 		if (blk.start + blk.size == got.start)
 		{
-			free_end = min(free_end, blk.start + blk.size);
+			free_end = min(get_aligned(free_end, 12), blk.start + blk.size);
 
 			tree_start.erase(ptr);
 			tree_size.erase(tree_size.find_ge(got));
@@ -195,7 +200,7 @@ void kfree(void *addr)
 	for (uint32_t i = get_aligned(free_start, 12); i + 0x1000 <= free_end; i += 0x1000)
 	{
 		Page::Table_entry_t *page = Page::current_page_dir->get_page(i, false);
-		if (page)
+		if (page->present)
 		{
 			page->free();
 			Page::invlpg(i);
@@ -234,7 +239,7 @@ void kheap_init()
 	tree_start.insert(b);
 
 	for (uint32_t i = KERNEL_HEAP_BEGIN; i < KERNEL_HEAP_END; i += 0x1000)
-		Page::current_page_dir->get_page(i, true);
+		Page::current_page_dir->get_page(i, true)->allocable = false;
 }
 
 void kheap_finish_init()

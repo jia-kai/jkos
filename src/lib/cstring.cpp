@@ -1,6 +1,6 @@
 /*
  * $File: cstring.cpp
- * $Date: Fri Dec 03 11:18:46 2010 +0800
+ * $Date: Fri Dec 17 19:24:29 2010 +0800
  *
  * functions for manipulating C-style strings
  */
@@ -49,6 +49,7 @@ char *strcpy(char *dest, const char *src)
 {
 	asm volatile
 	(
+		"cld\n"
 		"1:\n"
 		"lodsb\n"
 		"stosb\n"

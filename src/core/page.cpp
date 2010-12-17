@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 14 20:23:58 2010 +0800
+ * $Date: Fri Dec 17 17:35:02 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -59,30 +59,32 @@ static void page_fault(Isr_registers_t reg); // page fault handler
 
 void Table_entry_t::alloc(bool user_, bool writable)
 {
-	if (!addr)
+	if (!this->addr)
 	{
 		if (!nframes)
 			panic("no free frame");
-		addr = frames[-- nframes];
-		frame_ref_cnt[addr] = 1;
-		MSG_DEBUG("frame 0x%x allocated", addr);
-		present = 1;
-		rw = writable ? 1 : 0;
-		user = user_ ? 1 : 0;
+		this->addr = frames[-- nframes];
+		frame_ref_cnt[this->addr] = 1;
+		MSG_DEBUG("frame 0x%x allocated", this->addr);
+		this->allocable = 1;
+		this->present = 1;
+		this->rw = writable ? 1 : 0;
+		this->user = user_ ? 1 : 0;
 	}
 }
 
 void Table_entry_t::free()
 {
-	if (addr)
+	if (this->addr)
 	{
-		if (!(-- frame_ref_cnt[addr]))
+		if (!(-- frame_ref_cnt[this->addr]))
 		{
-			frames[nframes ++] = addr;
-			MSG_DEBUG("frame 0x%x freed", addr);
+			frames[nframes ++] = this->addr;
+			MSG_DEBUG("frame 0x%x freed", this->addr);
 		}
-		addr = 0;
-		present = 0;
+		this->addr = 0;
+		this->present = 0;
+		this->allocable = 0;
 	}
 }
 
@@ -106,7 +108,10 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make)
 		// we always set rw and user bit, so the actual permission is controled by the page
 		entries[tb_idx].addr = get_physical_addr(tables[tb_idx], true) >> 12;
 	}
-	return &(tables[tb_idx]->pages[tb_offset]);
+	Table_entry_t* ret = &(tables[tb_idx]->pages[tb_offset]);
+	if (make && !ret->allocable)
+		ret->allocable = true;
+	return ret;
 }
 
 void Directory_t::enable()
@@ -182,6 +187,7 @@ Table_t *clone_table(Table_t *src, uint32_t base_addr)
 				frame_ref_cnt[src->pages[i].addr] ++;
 			}
 		}
+		else dest->pages[i] = src->pages[i];
 	return dest;
 }
 
@@ -208,7 +214,7 @@ void Page::init(void *ptr_mbd)
 
 	// make sure virtual address and physical address of kernel code and static kernel heap
 	// are the same
-	for (uint32_t i = 0; i < kheap_get_size_pre_init(); i += 0x1000)
+	for (uint32_t i = 0x1000; i < kheap_get_size_pre_init(); i += 0x1000)
 	{
 		Table_entry_t *page = kernel_page_dir->get_page(i, true);
 		page->present = 1;
@@ -216,7 +222,7 @@ void Page::init(void *ptr_mbd)
 		page->user = 0;
 		page->addr = i >> 12;
 	}
-
+	
 	while (frames[nframes - 1] <= (kheap_get_size_pre_init() >> 12))
 		nframes --;
 
@@ -248,7 +254,7 @@ void page_fault(Isr_registers_t reg)
 	asm volatile("mov %%cr2, %0" : "=r" (addr));
 
 	Table_entry_t *page = current_page_dir->get_page(addr);
-	if (page)
+	if (page && page->allocable)
 	{
 		if (!(reg.err_code & 1))
 		{

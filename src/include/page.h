@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Tue Dec 07 18:48:56 2010 +0800
+ * $Date: Fri Dec 17 17:26:04 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -55,10 +55,10 @@ namespace Page
 		uint32_t dirty		: 1;	// whether this page has been written to (not updated by CPU)
 		uint32_t zero		: 1;
 		uint32_t global		: 1;	// if set, prevents the TLB from updating the address in it's cache
-		// if CR3 is reset.
-		// Note, that the page global enable bit in
-		// CR4 must be set to enable this feature. 
-		uint32_t available	: 3;
+									// if CR3 is reset.
+									// Note, that the page global enable bit in
+									// CR4 must be set to enable this feature. 
+		uint32_t allocable	: 3;	// this page can be allocated iff this field is not zero (used to detect page fault)
 		uint32_t addr		: 20;	// physical page frame address
 
 

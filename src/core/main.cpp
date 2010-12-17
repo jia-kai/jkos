@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Thu Dec 16 17:19:25 2010 +0800
+ * $Date: Fri Dec 17 19:07:14 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -75,10 +75,11 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 
 	/*
-	volatile int *x = (int*)0xF000000F;
+	volatile int *x = NULL;
 	*x = 0;
 	*/
 
+	/*
 	wait_key();
 	
 	for (int l = 0; l < 3; l ++)
@@ -88,7 +89,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 		for (int i = 0; i < 3; i ++)
 		{
 			Scio::printf("subloop %d\n", i);
-			ptr[i] = (uint32_t)kmalloc(8 + i, 4);
+			ptr[i] = (uint32_t)kmalloc(8 + i, 12);
 			Scio::printf("\nptr[%d]=0x%x\n", i, ptr[i]);
 			kheap_output_debug_msg();
 			*(char*)ptr[i] = 'x';
@@ -104,6 +105,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 			wait_key();
 		}
 	}
+	*/
 
 
 	/*
@@ -152,6 +154,14 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	Task::switch_to_user_mode(uaddr, uaddr + 0x1000);
 	*/
 
+	Task::pid_t fork_ret = Task::fork();
+	Task::pid_t pid = Task::getpid();
+	for (int i = 0; i < 10; i ++)
+	{
+		Scio::printf("fork returned: %d\n", fork_ret);
+		for (int volatile j = 0; j < 1000000; j ++);
+	}
+
 	if (mbd->mods_count)
 	{
 		uint32_t start = *(uint32_t*)mbd->mods_addr,
@@ -161,9 +171,21 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 		Fs::Node_file *file = ramdisk_get_file_node(start, end);
 		char buf[256];
-		file->read(buf, 256);
-		Scio::printf("ramdisk: %s\n", buf);
+		memset(buf, 0, sizeof(buf));
+		for (int i = 0; i < 2; i ++)
+		{
+			file->read(buf, 256);
+			asm volatile ("cli");
+			Scio::printf("(pid %d) ramdisk: %s\n", pid, buf);
+			asm volatile ("sti");
+			buf[0] = (char)('0' + pid);
+			file->write(buf, 256);
+			for (int volatile j = 0; j < 1000000; j ++);
+		}
 	}
+
+	Scio::printf("(pid %d) done\n", pid);
+	for (; ;);
 
 	cxxsupport_finalize();
 	panic("test");
