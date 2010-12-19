@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Fri Dec 17 18:53:13 2010 +0800
+ * $Date: Sun Dec 19 11:01:23 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -99,7 +99,7 @@ void* kmalloc(uint32_t size, int palign)
 		return kmalloc_pre_init(size, palign);
 
 	Block_t req;
-	req.size = size;
+	req.size = size + sizeof(Block_t);
 	req.start = 0;
 	while (1)
 	{

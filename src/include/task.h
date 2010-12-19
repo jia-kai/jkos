@@ -1,6 +1,6 @@
 /*
  * $File: task.h
- * $Date: Thu Dec 09 16:05:54 2010 +0800
+ * $Date: Sun Dec 19 20:31:39 2010 +0800
  *
  * task scheduling and managing
  */
@@ -40,6 +40,7 @@ namespace Task
 
 	extern pid_t fork();
 	extern pid_t getpid();
+	extern void exit(int status);
 
 	// whether the current task is kernel code or user program
 	extern bool is_kernel();

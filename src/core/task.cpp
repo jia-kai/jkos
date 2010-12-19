@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 13 15:48:41 2010 +0800
+ * $Date: Sun Dec 19 20:54:35 2010 +0800
  *
  * task scheduling and managing
  */
@@ -34,7 +34,19 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Task;
 
-const uint32_t KERNEL_STACK_SIZE = 16 * 1024;
+// constant and variable definitions
+const uint32_t
+	KERNEL_STACK_SIZE = 16 * 1024,
+	INIT_STACK_SIZE = 1024 * 16,
+	STACK_POS = 0xA0000000u, STACK_SIZE = 4 * 1024;
+static bool switch_to_user_mode_called = false;
+
+// defined in loader.s
+extern "C" uint32_t initial_stack_pointer;
+
+
+
+// struct definitions
 struct Task_t
 {
 	Task::pid_t id;
@@ -44,32 +56,36 @@ struct Task_t
 	int errno; // saved error number of current task
 
 	uint32_t kernel_stack; // kernel stack location in the TSS
-	volatile Task_t *next;
+	volatile Task_t
+		*par, // parent task
+		*queue_next, *queue_prev; // next and previuos task in the task queue
+
 	Task_t(Page::Directory_t *dir);
 };
-
+static volatile Task_t *current_task;
+ 
 struct Task_queue
 {
-	// cycle queue
-	volatile Task_t *head, *tail;
+	// task queue is a cycle queue
 
-	// return NULL if the queue is empty
-	volatile Task_t* pop();
+	volatile Task_t *ptr;
+	// pointer to an arbitrary task in this queue, or NULL iff the queue is empty
 
-	void append(volatile Task_t *task);
+	void insert(volatile Task_t *task);
+
+	// remove a task from this queue
+	// @task must be in this queue (no check performed!)
+	void remove(volatile Task_t *task);
 };
 
-const uint32_t
-	INIT_STACK_SIZE = 1024 * 16,
-	STACK_POS = 0xA0000000u, STACK_SIZE = 4 * 1024;
-
-// defined in loader.s
-extern "C" uint32_t initial_stack_pointer;
-
-static volatile Task_t *current_task;
-static bool switch_to_user_mode_called = false;
+namespace Queue
+{
+	static Task_queue running; //stopped, zombie;
+}
 
 
+
+// function declarations
 
 namespace Pid_allocator
 {
@@ -79,18 +95,26 @@ namespace Pid_allocator
 	void free(pid_t pid);
 }
 
-namespace Queue
-{
-	static Task_queue ready;
-	// currently only ready queue is used
-}
-
 // move the stack out of kernel pages
 // (to avoid being linked when cloing page directories)
 static void move_stack();
 
+static inline volatile Task_t* get_next_task();
+
 // defined in misc.s
 extern "C" uint32_t read_eip();
+
+#define CLI_SAVE_EFLAGS(_var_) \
+asm volatile \
+( \
+	"pushf\n" \
+	"cli\n" \
+	"popl %0" \
+  : "=g"(_var_) \
+)
+
+
+// function implementations
 
 void Task::init()
 {
@@ -98,7 +122,7 @@ void Task::init()
 
 	// initialise the first task (kernel task)
 	current_task = new Task_t(Page::current_page_dir);
-	Queue::ready.append(current_task);
+	Queue::running.insert(current_task);
 
 	set_kernel_stack(current_task->kernel_stack + KERNEL_STACK_SIZE);
 
@@ -107,13 +131,15 @@ void Task::init()
 
 pid_t Task::fork()
 {
-	asm volatile ("cli");
+	uint32_t old_eflags;
+	CLI_SAVE_EFLAGS(old_eflags);
 
 	uint32_t eip;
 	volatile Task_t *par_task = current_task, *child;
 
 	child = new Task_t(Page::clone_directory(Page::current_page_dir));
-	Queue::ready.append(child);
+	child->par = par_task;
+	Queue::running.insert(child);
 
 	eip = read_eip();
 
@@ -127,17 +153,27 @@ pid_t Task::fork()
 			: "=g"(child->esp), "=g"(child->ebp)
 		);
 		child->eip = eip;
+		// so upon next scheduling, child will be started executing at
+		// read_eip() above
 
-		asm volatile ("sti");
+		asm volatile // restore interrupt state
+		(
+			"pushl %0\n"
+			"popf\n"
+			: : "g"(old_eflags)
+		); 
 		return child->id;
 	}
 
-	//  now we are the child, return 0 by convention
+	//  now we are the child, and 0 should be returned
 	return 0;
 }
 
 void Task::schedule()
 {
+	uint32_t old_eflags;
+	CLI_SAVE_EFLAGS(old_eflags);
+
 	uint32_t esp, ebp, eip;
 	asm volatile
 	(
@@ -154,7 +190,7 @@ void Task::schedule()
 	current_task->ebp = ebp;
 	current_task->eip = eip;
 
-	current_task = current_task->next;
+	current_task = get_next_task();
 
 	esp = current_task->esp;
 	ebp = current_task->ebp;
@@ -165,16 +201,19 @@ void Task::schedule()
 	Page::current_page_dir = current_task->page_dir;
 	asm volatile
 	(
-		"cli\n"
-		"mov %0, %%ecx\n"
-		"mov %1, %%esp\n"
-		"mov %2, %%ebp\n" // IMPORTANT: ebp must be changed last
-		"mov %3, %%cr3\n"
-		"mov $0xFFFFFFFF, %%eax\n"
+		"movl %[old_eflags], %%ebx\n"
+		"movl %0, %%eax\n"
+		"movl %1, %%ecx\n"
+		"movl %2, %%esp\n"
+		"movl %3, %%cr3\n"
+		"movl %%eax, %%ebp\n" // IMPORTANT: ebp must be changed last
+		"movl $0xFFFFFFFF, %%eax\n"
 			// so after jump, we can replace the return value of read_eip() above
-		"sti\n"
+		"pushl %%ebx\n"
+		"popf\n"
 		"jmp *%%ecx"
-		: : "g"(eip), "g"(esp), "g"(ebp), "g"(Page::current_page_dir->phyaddr)
+		: : "g"(ebp), "g"(eip), "g"(esp), "g"(Page::current_page_dir->phyaddr), [old_eflags]"g"(old_eflags)
+		: "eax", "ebx", "ecx"
 	);
 }
 
@@ -183,36 +222,57 @@ pid_t Task::getpid()
 	return current_task->id;
 }
 
-volatile Task_t* Task_queue::pop()
+void Task::exit(int status)
 {
-	if (!head)
-		return NULL;
-	volatile Task_t *ret = head;
-	if (head == tail)
-		head = tail = NULL;
-	else
-		head = head->next;
-	return ret;
+	uint32_t old_eflags;
+	CLI_SAVE_EFLAGS(old_eflags);
+	status = old_eflags;
 }
 
-void Task_queue::append(volatile Task_t *task)
-{
-	if (!head)
-		(head = tail = task)->next = task;
-	else
-		(tail = tail->next = task)->next = head;
-}
 
 Task_t::Task_t(Page::Directory_t *dir) :
 	id(Pid_allocator::get()), esp(0), ebp(0), eip(0),
-	page_dir(dir),
-	next(NULL)
+	page_dir(dir), errno(0),
+	par(NULL), queue_next(NULL), queue_prev(NULL)
 {
-	kernel_stack = (uint32_t)kmalloc(KERNEL_STACK_SIZE, 4);
+	kernel_stack = (uint32_t)kmalloc(KERNEL_STACK_SIZE, 2);
+
+	// kernel stack must be allocated in advance, otherwise you will see triple fault
 	for (uint32_t i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
 		Page::current_page_dir->get_page(kernel_stack + i, true)->alloc(false, true);
 	Page::current_page_dir->get_page(kernel_stack + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
-	set_kernel_stack(kernel_stack + KERNEL_STACK_SIZE);
+}
+
+void Task_queue::insert(volatile Task_t *task)
+{
+	if (!ptr)
+	{
+		ptr = task;
+		task->queue_prev = task->queue_next = task;
+	}
+	else
+	{
+		task->queue_next = ptr->queue_next;
+		task->queue_next->queue_prev = task;
+		ptr->queue_next = task;
+		task->queue_prev = ptr;
+	}
+}
+
+void Task_queue::remove(volatile Task_t *task)
+{
+	if (ptr->queue_next == ptr)
+	{
+		kassert(ptr == task);
+		ptr = NULL;
+	} else
+	{
+		if (ptr == task)
+			ptr = ptr->queue_next;
+		task->queue_prev->queue_next = task->queue_next;
+		task->queue_next->queue_prev = task->queue_prev;
+		task->queue_prev = task->queue_next = NULL;
+	}
 }
 
 void move_stack()
@@ -299,12 +359,17 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 
 		"pushl %2\n"			// set user mode code selector
 		"pushl %3\n"
-		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
+		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "m"(esp), "i"(USER_CODE_SELECTOR | 0x3), "m"(addr)
 	);
 }
 
 void set_errno(int errno)
 {
 	current_task->errno = errno;
+}
+
+volatile Task_t* get_next_task()
+{
+	return current_task->queue_next;
 }
 
