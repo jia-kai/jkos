@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Sun Dec 19 20:54:35 2010 +0800
+ * $Date: Mon Dec 20 14:23:41 2010 +0800
  *
  * task scheduling and managing
  */
@@ -61,6 +61,9 @@ struct Task_t
 		*queue_next, *queue_prev; // next and previuos task in the task queue
 
 	Task_t(Page::Directory_t *dir);
+
+private:
+	uint8_t kernel_stack_mem[KERNEL_STACK_SIZE];
 };
 static volatile Task_t *current_task;
  
@@ -124,7 +127,7 @@ void Task::init()
 	current_task = new Task_t(Page::current_page_dir);
 	Queue::running.insert(current_task);
 
-	set_kernel_stack(current_task->kernel_stack + KERNEL_STACK_SIZE);
+	set_kernel_stack(current_task->kernel_stack);
 
 	MSG_INFO("tasking initialized");
 }
@@ -136,6 +139,7 @@ pid_t Task::fork()
 
 	uint32_t eip;
 	volatile Task_t *par_task = current_task, *child;
+	pid_t ret = 0;
 
 	child = new Task_t(Page::clone_directory(Page::current_page_dir));
 	child->par = par_task;
@@ -143,9 +147,9 @@ pid_t Task::fork()
 
 	eip = read_eip();
 
-	// we could be either the parent task or child task
 	if (current_task == par_task)
 	{
+		// we are the parent task
 		asm volatile
 		(
 			"mov %%esp, %0\n"
@@ -156,17 +160,18 @@ pid_t Task::fork()
 		// so upon next scheduling, child will be started executing at
 		// read_eip() above
 
-		asm volatile // restore interrupt state
-		(
-			"pushl %0\n"
-			"popf\n"
-			: : "g"(old_eflags)
-		); 
-		return child->id;
+		ret = child->id;
+
 	}
 
-	//  now we are the child, and 0 should be returned
-	return 0;
+	asm volatile // restore interrupt state
+	(
+		"pushl %0\n"
+		"popf\n"
+		: : "g"(old_eflags)
+	); 
+
+	return ret;
 }
 
 void Task::schedule()
@@ -196,7 +201,7 @@ void Task::schedule()
 	ebp = current_task->ebp;
 	eip = current_task->eip;
 
-	set_kernel_stack(current_task->kernel_stack + KERNEL_STACK_SIZE);
+	set_kernel_stack(current_task->kernel_stack);
 
 	Page::current_page_dir = current_task->page_dir;
 	asm volatile
@@ -235,12 +240,13 @@ Task_t::Task_t(Page::Directory_t *dir) :
 	page_dir(dir), errno(0),
 	par(NULL), queue_next(NULL), queue_prev(NULL)
 {
-	kernel_stack = (uint32_t)kmalloc(KERNEL_STACK_SIZE, 2);
+	this->kernel_stack = (uint32_t)(this->kernel_stack_mem + KERNEL_STACK_SIZE) & 0xFFFFFFFC;
 
+	uint32_t addr = (uint32_t)this->kernel_stack_mem;
 	// kernel stack must be allocated in advance, otherwise you will see triple fault
 	for (uint32_t i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
-		Page::current_page_dir->get_page(kernel_stack + i, true)->alloc(false, true);
-	Page::current_page_dir->get_page(kernel_stack + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
+		Page::current_page_dir->get_page(addr + i, true)->alloc(false, true);
+	Page::current_page_dir->get_page(addr + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
 }
 
 void Task_queue::insert(volatile Task_t *task)
@@ -359,7 +365,7 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 
 		"pushl %2\n"			// set user mode code selector
 		"pushl %3\n"
-		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "m"(esp), "i"(USER_CODE_SELECTOR | 0x3), "m"(addr)
+		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr) : "eax"
 	);
 }
 
