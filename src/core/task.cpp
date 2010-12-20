@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 20 14:23:41 2010 +0800
+ * $Date: Mon Dec 20 20:23:02 2010 +0800
  *
  * task scheduling and managing
  */
@@ -31,22 +31,28 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <descriptor_table.h>
 #include <lib/cstring.h>
+#include <lib/rbtree.h>
 
 using namespace Task;
 
-// constant and variable definitions
+// constant definitions
 const uint32_t
 	KERNEL_STACK_SIZE = 16 * 1024,
 	INIT_STACK_SIZE = 1024 * 16,
 	STACK_POS = 0xA0000000u, STACK_SIZE = 4 * 1024;
-static bool switch_to_user_mode_called = false;
-
-// defined in loader.s
-extern "C" uint32_t initial_stack_pointer;
-
 
 
 // struct definitions
+struct Task_t;
+struct Pair_id_task
+{
+	pid_t id;
+	volatile Task_t *task;
+	inline bool operator < (const Pair_id_task &p) const
+	{ return id < p.id; }
+};
+typedef Rbt<Pair_id_task> Rbt_id_task;
+
 struct Task_t
 {
 	Task::pid_t id;
@@ -62,10 +68,13 @@ struct Task_t
 
 	Task_t(Page::Directory_t *dir);
 
+	static void *rbt_alloc();
+	static void rbt_free(void *);
+
 private:
-	uint8_t kernel_stack_mem[KERNEL_STACK_SIZE];
+	uint8_t kernel_stack_mem[KERNEL_STACK_SIZE], rbt_node_mem[sizeof(Rbt_id_task::Node) + 1];
+	static volatile Task_t *latest_task;
 };
-static volatile Task_t *current_task;
  
 struct Task_queue
 {
@@ -81,28 +90,32 @@ struct Task_queue
 	void remove(volatile Task_t *task);
 };
 
+
+
+// variable definitions
+static bool switch_to_user_mode_called = false;
+static volatile Task_t *current_task;
+static Rbt_id_task rbt_id2task(Task_t::rbt_alloc, Task_t::rbt_free);
+volatile Task_t *Task_t::latest_task;
+extern "C" uint32_t initial_stack_pointer; // defined in loader.s
 namespace Queue
 {
-	static Task_queue running; //stopped, zombie;
+	Task_queue
+		running,
+		stopped, // stopped, both interruptible and uninterruptible
+		zombie;
 }
-
 
 
 // function declarations
-
-namespace Pid_allocator
-{
-	static pid_t next;
-	static pid_t get();
-	// XXX: not used
-	void free(pid_t pid);
-}
 
 // move the stack out of kernel pages
 // (to avoid being linked when cloing page directories)
 static void move_stack();
 
 static inline volatile Task_t* get_next_task();
+static inline volatile Task_t* id2task(pid_t pid);
+static inline pid_t get_next_pid();
 
 // defined in misc.s
 extern "C" uint32_t read_eip();
@@ -236,17 +249,23 @@ void Task::exit(int status)
 
 
 Task_t::Task_t(Page::Directory_t *dir) :
-	id(Pid_allocator::get()), esp(0), ebp(0), eip(0),
+	id(get_next_pid()), esp(0), ebp(0), eip(0),
 	page_dir(dir), errno(0),
 	par(NULL), queue_next(NULL), queue_prev(NULL)
 {
 	this->kernel_stack = (uint32_t)(this->kernel_stack_mem + KERNEL_STACK_SIZE) & 0xFFFFFFFC;
 
-	uint32_t addr = (uint32_t)this->kernel_stack_mem;
 	// kernel stack must be allocated in advance, otherwise you will see triple fault
+	uint32_t addr = (uint32_t)this->kernel_stack_mem;
 	for (uint32_t i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
 		Page::current_page_dir->get_page(addr + i, true)->alloc(false, true);
 	Page::current_page_dir->get_page(addr + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
+
+	Task_t::latest_task = this;
+	Pair_id_task val;
+	val.id = this->id;
+	val.task = this;
+	rbt_id2task.insert(val);
 }
 
 void Task_queue::insert(volatile Task_t *task)
@@ -290,9 +309,7 @@ void move_stack()
 	size = STACK_SIZE;
 	for (i = dest - 1; i >= dest - size; i -= 0x1000)
 	{
-		Page::current_page_dir->get_page(i, true)->alloc(true, true);
-		// usermode !
-		// **PERMISSION_CONTROL**
+		Page::current_page_dir->get_page(i, true)->alloc(false, true);
 		Page::invlpg(i);
 	}
 
@@ -312,6 +329,8 @@ void move_stack()
 	for (i = dest - 4; i > new_esp; i -= 4)
 	{
 		tmp = *(uint32_t*)i;
+
+		// we assume all values between old_esp and initial_stack_pointer are a pointer ...
 		if (tmp < initial_stack_pointer && tmp > old_esp)
 			(*(uint32_t*)i) += offset;
 	}
@@ -324,13 +343,12 @@ void move_stack()
 	);
 }
 
-pid_t Pid_allocator::get()
+pid_t get_next_pid()
 {
+	static pid_t next;
+	while (id2task(next))
+		next ++;
 	return next ++;
-}
-
-void Pid_allocator::free(pid_t)
-{
 }
 
 bool Task::is_kernel()
@@ -377,5 +395,26 @@ void set_errno(int errno)
 volatile Task_t* get_next_task()
 {
 	return current_task->queue_next;
+}
+
+volatile Task_t* id2task(pid_t pid)
+{
+	Pair_id_task req;
+	req.id = pid;
+	Rbt_id_task::Node *ptr = rbt_id2task.find_ge(req);
+	if (ptr)
+		return ptr->get_key().task;
+	return NULL;
+}
+
+
+void *Task_t::rbt_alloc()
+{
+	uint32_t addr = (uint32_t)Task_t::latest_task->rbt_node_mem;
+	return (void*)(addr + (addr & 1));
+}
+
+void Task_t::rbt_free(void *)
+{
 }
 

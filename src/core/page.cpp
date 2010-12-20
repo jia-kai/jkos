@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Fri Dec 17 17:35:02 2010 +0800
+ * $Date: Mon Dec 20 20:07:50 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -173,7 +173,7 @@ Table_t *clone_table(Table_t *src, uint32_t base_addr)
 		{
 			if (Task::is_in_kernel_stack(base_addr | (i << 12)))
 			{
-				// we should copy kernel stacks directly instead of using copy-on-write
+				// we should copy kernel stack directly instead of using copy-on-write
 				// (otherwise will cause triple fault)
 				dest->pages[i] = src->pages[i];
 				dest->pages[i].addr = 0;

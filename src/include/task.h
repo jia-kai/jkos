@@ -1,6 +1,6 @@
 /*
  * $File: task.h
- * $Date: Sun Dec 19 20:31:39 2010 +0800
+ * $Date: Mon Dec 20 20:05:45 2010 +0800
  *
  * task scheduling and managing
  */
@@ -27,6 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #define HEADER_TASK
 
 #include <common.h>
+#include <signal.h>
 
 namespace Task
 {

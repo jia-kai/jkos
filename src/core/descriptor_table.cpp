@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Thu Dec 09 21:58:02 2010 +0800
+ * $Date: Mon Dec 20 15:45:12 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -174,9 +174,8 @@ void isr_unhandled(Isr_registers_t reg)
 	{
 		// unhandled IRQ interrupt
 		isr_eoi(reg.int_no);
-	}
-
-	panic("unhandled interrupt");
+	} else
+		panic("unhandled interrupt");
 }
 
 void GDT_entry_t::set(uint32_t base, uint32_t limit, uint8_t access_, uint8_t flag)
