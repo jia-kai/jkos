@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Dec 20 15:37:09 2010 +0800
+ * $Date: Mon Dec 20 22:01:07 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -128,32 +128,60 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	delete []ptr;
 	*/
 
-	/*
-	uint32_t uaddr = 0x54323456;
+	uint32_t uaddr = 0x54323000, uesp = uaddr + 0x500;
 	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
 	uint32_t fbegin, fend;
+#include <asm.h>
 	asm volatile
 	(
 		"jmp user_func_end\n"
 		"user_func_begin:\n"
+		"mov %%esp, %%ebx\n"
 		"mov $1, %%eax\n"
-		"mov %%ds, %%ebx\n"
-		"iret\n"
 		"int $0x80\n"
-		"movl $1, 0x2\n"
+
+#if 0
+		"pushl %2\n"
+		"pushl $kmain\n"
+		"pushf\n"
+		"pushl %3\n"
+		"pushl %4\n"
+		"iret\n"
+#endif
+
+		"mov $2, %%eax\n"
+		"int $0x80\n"
+		"mov %%eax, %%ebx\n"
+		"mov $1, %%eax\n"
+		"mov $10, %%ecx\n"
+		"loop:\n"
+		"int $0x80\n"
+		"mov $1000000, %%edx\n"
+		"1:\n"
+		"dec %%edx\n"
+		"cmpl $0, %%edx\n"
+		"jne 1b\n"
+		"dec %%ecx\n"
+		"cmpl $0, %%ecx\n"
+		"jne loop\n"
+
+		"addl $100, %%ebx\n"
+		"int $0x80\n"
+
 		"1: jmp 1b\n"
 		"user_func_end:\n"
 		"movl $user_func_begin, %0\n"
 		"movl $user_func_end, %1\n"
 		: "=g"(fbegin), "=g"(fend)
+		: "i"(KERNEL_DATA_SELECTOR), "i"(KERNEL_CODE_SELECTOR), "i"(0)
 	);
 	memcpy((void*)uaddr, (void*)fbegin, fend - fbegin);
 
-	Scio::printf("esp=0x%x\n", uaddr + 0x1000);
+	Scio::printf("esp should be 0x%x\n", uesp);
 
-	Task::switch_to_user_mode(uaddr, uaddr + 0x1000);
-	*/
+	Task::switch_to_user_mode(uaddr, uesp);
 
+	/*
 	Task::pid_t fork_ret = Task::fork();
 	Task::pid_t pid = Task::getpid();
 
@@ -187,6 +215,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	Scio::printf("(pid %d) done\n", pid);
 	for (; ;);
+	*/
 
 	cxxsupport_finalize();
 	panic("test");

@@ -1,6 +1,6 @@
 /*
  * $File: scio.h
- * $Date: Fri Dec 03 15:36:44 2010 +0800
+ * $Date: Mon Dec 20 20:34:14 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -54,7 +54,7 @@ namespace Scio
 	// push the color onto the color stack
 	// the color used is the top of the color stack
 	// Note: if the stack is full, the top will be replaced
-	extern void push_color(Color_t forecolor, Color_t backcolor);
+	extern void push_color(Color_t forecolor, Color_t backcolor = BLACK);
 
 	// pop the color stack
 	// Note: if there is only one color in the stack, nothing happens

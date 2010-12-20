@@ -1,6 +1,6 @@
 /*
  * $File: syscall.cpp
- * $Date: Fri Dec 10 11:30:50 2010 +0800
+ * $Date: Mon Dec 20 21:53:02 2010 +0800
  *
  * interface for implementing system calls
  */
@@ -26,19 +26,23 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <syscall.h>
 #include <descriptor_table.h>
 #include <scio.h>
+#include <task.h>
 
 static int test(uint32_t arg)
 {
 	uint32_t cs;
 	asm volatile ("mov %%cs, %0" : "=g"(cs));
+	Scio::push_color(Scio::GREEN);
 	Scio::printf("called from user mode! arg=0x%x cs=0x%x\n", arg, cs);
+	Scio::pop_color();
 	return 1;
 }
 
 static uint32_t syscall_addr[] =
 {
 	(uint32_t)Scio::puts,
-	(uint32_t)test
+	(uint32_t)test,
+	(uint32_t)Task::fork
 };
 const uint32_t NR_SYSCALLS = sizeof(syscall_addr) / sizeof(syscall_addr[0]);
 

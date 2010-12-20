@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 20 20:23:02 2010 +0800
+ * $Date: Mon Dec 20 22:03:40 2010 +0800
  *
  * task scheduling and managing
  */
@@ -383,7 +383,9 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 
 		"pushl %2\n"			// set user mode code selector
 		"pushl %3\n"
-		"iret\n" : : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr) : "eax"
+		"iret\n"
+		: : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
+		: "eax"
 	);
 }
 
