@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 21 11:39:01 2010 +0800
+ * $Date: Tue Dec 21 11:40:54 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -163,8 +163,6 @@ void test_fork(Multiboot_info_t *mbd)
 	Task::pid_t fork_ret = Task::fork();
 	Task::pid_t pid = Task::getpid();
 
-	// asm volatile ("sti");
-
 	for (int i = 0; i < 10; i ++)
 	{
 		Scio::printf("fork returned: %d   pid: %d\n", fork_ret, pid);
@@ -223,8 +221,8 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	*x = 0;
 	*/
 
-	test_alloc();
-	// test_fork(mbd);
+	// test_alloc();
+	test_fork(mbd);
 
 	cxxsupport_finalize();
 }

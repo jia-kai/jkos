@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Tue Dec 21 11:38:45 2010 +0800
+ * $Date: Tue Dec 21 11:56:00 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -119,9 +119,9 @@ void init_gdt()
 	// TSS
 	memset(&tss_entry, 0, sizeof(tss_entry));
 	tss_entry.ss0 = KERNEL_DATA_SELECTOR;
+	tss_entry.esp0 = KERNEL_STACK_POS;
 	tss_entry.cs = KERNEL_CODE_SELECTOR | 0x03;
 	tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = KERNEL_DATA_SELECTOR | 0x03;
-	tss_entry.esp0 = KERNEL_STACK_POS;
 	gdt_entries[5].set((uint32_t)&tss_entry, ((uint32_t)&tss_entry) + sizeof(TSS_entry_t), 0b11101001, 0);
 
 	gdt_flush((uint32_t)&gdt_ptr);

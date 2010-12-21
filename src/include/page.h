@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Tue Dec 21 10:45:55 2010 +0800
+ * $Date: Tue Dec 21 14:14:34 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -98,10 +98,10 @@ namespace Page
 		void enable();
 
 		// get physical address of virtual address @addr
-		// if the corresponding page does not exist, -1 is returned
+		// if the corresponding page does not exist, 0 is returned
 		// if the page has no corresponding frame:
 		//		if @alloc is true, a new frame will be allocated
-		//		otherwise -1 is returned
+		//		otherwise 0 is returned
 		uint32_t get_physical_addr(void *addr, bool alloc = false, bool user = false, bool writable = true);
 	};
 

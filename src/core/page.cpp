@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 21 11:35:28 2010 +0800
+ * $Date: Tue Dec 21 15:03:47 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -130,11 +130,11 @@ uint32_t Directory_t::get_physical_addr(void *addr0, bool alloc, bool user, bool
 
 	Table_entry_t *page = get_page(addr);
 	if (page == NULL)
-		return (uint32_t)-1;
+		return 0;
 	if (!page->addr)
 	{
 		if (!alloc)
-			return (uint32_t)-1;
+			return 0;
 		page->alloc(user, writable);
 	}
 	return (page->addr << 12) | (addr & 0xFFF);
@@ -168,8 +168,9 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	for (uint32_t i = KERNEL_STACK_POS - KERNEL_STACK_SIZE; i < KERNEL_STACK_POS; i += 0x1000)
 	{
 		uint32_t addr = current_page_dir->get_physical_addr((void*)i);
-		if (addr == (uint32_t)-1)
+		if (!addr)
 			break;
+		dest->get_page(i, true);
 		copy_page_physical(dest->get_physical_addr((void*)i, true, false, true), addr);
 	}
 
