@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 21 15:03:47 2010 +0800
+ * $Date: Tue Dec 21 15:34:37 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -367,7 +367,7 @@ void init_frames(Multiboot_info_t *mbd)
 			uint32_t end = (uint32_t)(mmap->addr + mmap->len);
 			end >>= 12;
 
-			for (uint32_t i = end; (-- i) >= start; )
+			for (uint32_t i = end - 1; (-- i) >= start; )
 				if (i > (kheap_get_size_pre_init() >> 12))
 					frames[nframes ++] = i;
 				else break;

@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 21 11:40:54 2010 +0800
+ * $Date: Tue Dec 21 16:17:26 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -140,7 +140,7 @@ void test_usermode()
 		"cmpl $0, %%ecx\n"
 		"jne loop\n"
 
-		"addl $100, %%ebx\n"
+		"addl $0x100, %%ebx\n"
 		"int $0x80\n"
 
 		"1: jmp 1b\n"
@@ -222,7 +222,8 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	*/
 
 	// test_alloc();
-	test_fork(mbd);
+	// test_fork(mbd);
+	test_usermode();
 
 	cxxsupport_finalize();
 }

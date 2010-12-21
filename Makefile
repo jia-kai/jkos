@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Tue Dec 21 11:10:10 2010 +0800
+# $Date: Tue Dec 21 16:00:50 2010 +0800
 
 #
 # This file is part of JKOS
@@ -67,7 +67,8 @@ kernel.bin: linker.ld $(OBJS)
 
 .PHONY: qemu qemu-dbg clean hg
 qemu: hda.img
-	qemu -hda hda.img
+	qemu -hda hda.img -monitor /dev/stdout
+	reset
 
 qemu-dbg: kernel.bin
 	qemu --kernel kernel.bin --initrd initrd -S -s 

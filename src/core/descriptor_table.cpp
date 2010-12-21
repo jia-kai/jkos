@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Tue Dec 21 11:56:00 2010 +0800
+ * $Date: Tue Dec 21 15:56:31 2010 +0800
  *
  * initialize descriptor tables
  *
