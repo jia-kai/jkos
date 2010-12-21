@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Mon Dec 20 20:07:50 2010 +0800
+ * $Date: Tue Dec 21 11:35:28 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -50,7 +50,7 @@ static bool init_finished;
 
 static void init_frames(Multiboot_info_t *mbd);
 
-static Table_t *clone_table(Table_t *src, uint32_t addr);
+static Table_t *clone_table(Table_t *src);
 
 // copy a frame (4kb) from physical address @src to physical address @dest
 static void copy_page_physical(uint32_t dest, uint32_t src);
@@ -103,10 +103,12 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make)
 				0, sizeof(Table_t));
 
 		entries[tb_idx].present = 1;
+
+		// we always set rw and user bit, so the actual permission is controled by the page
 		entries[tb_idx].rw = 1;
 		entries[tb_idx].user = 1;
-		// we always set rw and user bit, so the actual permission is controled by the page
-		entries[tb_idx].addr = get_physical_addr(tables[tb_idx], true) >> 12;
+
+		entries[tb_idx].addr = current_page_dir->get_physical_addr(tables[tb_idx]) >> 12;
 	}
 	Table_entry_t* ret = &(tables[tb_idx]->pages[tb_offset]);
 	if (make && !ret->allocable)
@@ -143,49 +145,47 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	Directory_t *dest = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12));
 	memset(dest, 0, sizeof(Directory_t));
 
-	dest->phyaddr = current_page_dir->get_physical_addr(dest->entries, true);
+	dest->phyaddr = current_page_dir->get_physical_addr(dest->entries);
 
-	for (int i = 0; i < 1024; i ++)
+	for (uint32_t i = 0; i < (KERNEL_HEAP_END >> 22); i ++)
 		if (src->tables[i])
 		{
 			if (kernel_page_dir->tables[i] == src->tables[i])
 			{
-				// we just link kernel tables
+				// we link kernel tables
 				dest->tables[i] = src->tables[i];
 				dest->entries[i] = src->entries[i];
 			} else
 			{
-				dest->tables[i] = clone_table(src->tables[i], i << 22);
+				dest->tables[i] = clone_table(src->tables[i]);
 				dest->entries[i] = src->entries[i];
-				dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i], true) >> 12;
+				dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i]) >> 12;
 			}
 		}
+
+	// we should copy kernel stack directly instead of using copy-on-write
+	// otherwise will cause triple fault
+	for (uint32_t i = KERNEL_STACK_POS - KERNEL_STACK_SIZE; i < KERNEL_STACK_POS; i += 0x1000)
+	{
+		uint32_t addr = current_page_dir->get_physical_addr((void*)i);
+		if (addr == (uint32_t)-1)
+			break;
+		copy_page_physical(dest->get_physical_addr((void*)i, true, false, true), addr);
+	}
 
 	return dest;
 }
 
-Table_t *clone_table(Table_t *src, uint32_t base_addr)
+Table_t *clone_table(Table_t *src)
 {
 	Table_t *dest = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12));
 	memset(dest, 0, sizeof(Table_t));
 	for (int i = 0; i < 1024; i ++)
 		if (src->pages[i].addr)
 		{
-			if (Task::is_in_kernel_stack(base_addr | (i << 12)))
-			{
-				// we should copy kernel stack directly instead of using copy-on-write
-				// (otherwise will cause triple fault)
-				dest->pages[i] = src->pages[i];
-				dest->pages[i].addr = 0;
-				dest->pages[i].alloc(false, true);
-				copy_page_physical(dest->pages[i].addr << 12, src->pages[i].addr << 12);
-			}
-			else
-			{
-				src->pages[i].rw = 0;
-				dest->pages[i] = src->pages[i];
-				frame_ref_cnt[src->pages[i].addr] ++;
-			}
+			src->pages[i].rw = 0;
+			dest->pages[i] = src->pages[i];
+			frame_ref_cnt[src->pages[i].addr] ++;
 		}
 		else dest->pages[i] = src->pages[i];
 	return dest;
@@ -212,8 +212,7 @@ void Page::init(void *ptr_mbd)
 	frame_ref_cnt = new uint32_t[frames[0] - frames[nframes - 1] + 1];
 	frame_ref_cnt -= frames[nframes - 1];
 
-	// make sure virtual address and physical address of kernel code and static kernel heap
-	// are the same
+	// make sure virtual address and physical address of kernel code/data are the same
 	for (uint32_t i = 0x1000; i < kheap_get_size_pre_init(); i += 0x1000)
 	{
 		Table_entry_t *page = kernel_page_dir->get_page(i, true);
@@ -289,7 +288,8 @@ void page_fault(Isr_registers_t reg)
 
 error:
 
-	Scio::printf("page fault: entry_addr=%p requestd_addr=%p\nerr_code=0x%x",
+	Scio::push_color(Scio::LIGHT_RED);
+	Scio::printf("page fault: entry_addr=%p requested_addr=%p\nerr_code=0x%x",
 			page, (void*)addr, reg.err_code);
 
 	const char * BIT_MEAN[4][2] =

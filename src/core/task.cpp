@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 20 22:03:40 2010 +0800
+ * $Date: Tue Dec 21 11:36:04 2010 +0800
  *
  * task scheduling and managing
  */
@@ -35,13 +35,6 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Task;
 
-// constant definitions
-const uint32_t
-	KERNEL_STACK_SIZE = 16 * 1024,
-	INIT_STACK_SIZE = 1024 * 16,
-	STACK_POS = 0xA0000000u, STACK_SIZE = 4 * 1024;
-
-
 // struct definitions
 struct Task_t;
 struct Pair_id_task
@@ -55,13 +48,12 @@ typedef Rbt<Pair_id_task> Rbt_id_task;
 
 struct Task_t
 {
-	Task::pid_t id;
+	pid_t id;
 	uint32_t esp, ebp, eip;
 	Page::Directory_t *page_dir;
 
 	int errno; // saved error number of current task
 
-	uint32_t kernel_stack; // kernel stack location in the TSS
 	volatile Task_t
 		*par, // parent task
 		*queue_next, *queue_prev; // next and previuos task in the task queue
@@ -72,7 +64,7 @@ struct Task_t
 	static void rbt_free(void *);
 
 private:
-	uint8_t kernel_stack_mem[KERNEL_STACK_SIZE], rbt_node_mem[sizeof(Rbt_id_task::Node) + 1];
+	uint8_t rbt_node_mem[sizeof(Rbt_id_task::Node) + 1];
 	static volatile Task_t *latest_task;
 };
  
@@ -140,7 +132,7 @@ void Task::init()
 	current_task = new Task_t(Page::current_page_dir);
 	Queue::running.insert(current_task);
 
-	set_kernel_stack(current_task->kernel_stack);
+	schedule();
 
 	MSG_INFO("tasking initialized");
 }
@@ -214,8 +206,6 @@ void Task::schedule()
 	ebp = current_task->ebp;
 	eip = current_task->eip;
 
-	set_kernel_stack(current_task->kernel_stack);
-
 	Page::current_page_dir = current_task->page_dir;
 	asm volatile
 	(
@@ -253,14 +243,6 @@ Task_t::Task_t(Page::Directory_t *dir) :
 	page_dir(dir), errno(0),
 	par(NULL), queue_next(NULL), queue_prev(NULL)
 {
-	this->kernel_stack = (uint32_t)(this->kernel_stack_mem + KERNEL_STACK_SIZE) & 0xFFFFFFFC;
-
-	// kernel stack must be allocated in advance, otherwise you will see triple fault
-	uint32_t addr = (uint32_t)this->kernel_stack_mem;
-	for (uint32_t i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
-		Page::current_page_dir->get_page(addr + i, true)->alloc(false, true);
-	Page::current_page_dir->get_page(addr + KERNEL_STACK_SIZE - 1, true)->alloc(false, true);
-
 	Task_t::latest_task = this;
 	Pair_id_task val;
 	val.id = this->id;
@@ -300,49 +282,6 @@ void Task_queue::remove(volatile Task_t *task)
 	}
 }
 
-void move_stack()
-{
-	static uint32_t i, old_esp, old_ebp, dest, size,
-					offset, new_esp, new_ebp, tmp;
-	// we use static variables to avoid corruption
-	dest = STACK_POS;
-	size = STACK_SIZE;
-	for (i = dest - 1; i >= dest - size; i -= 0x1000)
-	{
-		Page::current_page_dir->get_page(i, true)->alloc(false, true);
-		Page::invlpg(i);
-	}
-
-	asm volatile
-	(
-		"mov %%esp, %0\n"
-		"mov %%ebp, %1\n"
-		: "=g"(old_esp), "=g"(old_ebp)
-	);
-
-	offset = dest - initial_stack_pointer;
-	new_esp = old_esp + offset;
-	new_ebp = old_ebp + offset;
-
-	memcpy((void*)new_esp, (void*)old_esp, initial_stack_pointer - old_esp);
-
-	for (i = dest - 4; i > new_esp; i -= 4)
-	{
-		tmp = *(uint32_t*)i;
-
-		// we assume all values between old_esp and initial_stack_pointer are a pointer ...
-		if (tmp < initial_stack_pointer && tmp > old_esp)
-			(*(uint32_t*)i) += offset;
-	}
-
-	asm volatile
-	(
-		"mov %0, %%esp\n"
-		"mov %1, %%ebp\n"
-		: : "g"(new_esp), "g"(new_ebp)
-	);
-}
-
 pid_t get_next_pid()
 {
 	static pid_t next;
@@ -354,11 +293,6 @@ pid_t get_next_pid()
 bool Task::is_kernel()
 {
 	return !switch_to_user_mode_called;
-}
-
-bool Task::is_in_kernel_stack(uint32_t addr)
-{
-	return addr >= STACK_POS - STACK_SIZE && addr < STACK_POS;
 }
 
 void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
@@ -386,6 +320,48 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 		"iret\n"
 		: : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
 		: "eax"
+	);
+}
+
+void move_stack()
+{
+	// we use static variables to avoid corruption
+	static uint32_t i, old_esp, old_ebp, 
+					offset, new_esp, new_ebp, tmp;
+
+	for (i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
+	{
+		Page::current_page_dir->get_page(KERNEL_STACK_POS - 1 - i, true)->alloc(false, true);
+		Page::invlpg(i);
+	}
+
+	asm volatile
+	(
+		"mov %%esp, %0\n"
+		"mov %%ebp, %1\n"
+		: "=g"(old_esp), "=g"(old_ebp)
+	);
+
+	offset = KERNEL_STACK_POS - initial_stack_pointer;
+	new_esp = old_esp + offset;
+	new_ebp = old_ebp + offset;
+
+	memcpy((void*)new_esp, (void*)old_esp, initial_stack_pointer - old_esp);
+
+	for (i = KERNEL_STACK_POS - 4; i > new_esp; i -= 4)
+	{
+		tmp = *(uint32_t*)i;
+
+		// we assume all values between old_esp and initial_stack_pointer are a pointer ...
+		if (tmp < initial_stack_pointer && tmp > old_esp)
+			(*(uint32_t*)i) += offset;
+	}
+
+	asm volatile
+	(
+		"mov %0, %%esp\n"
+		"mov %1, %%ebp\n"
+		: : "g"(new_esp), "g"(new_ebp)
 	);
 }
 

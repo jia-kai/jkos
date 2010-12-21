@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Fri Dec 03 16:03:38 2010 +0800
+ * $Date: Tue Dec 21 11:05:48 2010 +0800
  *
  * some common definitions and functions
  */
@@ -65,9 +65,19 @@ static inline const T& min(const T &a, const T &b)
 typedef uint32_t size_t; // size type
 typedef int32_t ssize_t; // signed size type
 
-static const int
+static const uint32_t
 	CLOCK_TICK_RATE	=	1193180,
-	KERNEL_HZ		=	50;
+	KERNEL_HZ		=	50,
+
+	// KERNEL_STACK_POS must be page (4kb) aligned, and KERNEL_STACK_SIZE must be a multiple of 4kb
+	KERNEL_STACK_POS	= 0xFFFFF000, // beginning (highest) address of kernel stack plus 1
+	KERNEL_STACK_SIZE	= 4 * 1024,
+
+	// KERNEL_HEAP_END must lie on page directry (4mb) boundary,
+	// and only kernel stack should be above kernel heap
+	KERNEL_HEAP_END		= (KERNEL_STACK_POS - KERNEL_STACK_SIZE) & 0xFFC00000,
+	KERNEL_HEAP_BEGIN	= KERNEL_HEAP_END - 256 * 1024 * 1024;
+
 
 #endif // HEADER_COMMON
 

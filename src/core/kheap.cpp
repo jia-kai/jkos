@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Sun Dec 19 11:01:23 2010 +0800
+ * $Date: Mon Dec 20 23:19:30 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -37,10 +37,6 @@ static bool kheap_finish_init_called = false;
 
 // used for static memory allocating (before page initialization completed)
 static uint32_t kheap_static_end = (uint32_t)&kernel_img_end + 4;
-
-static const uint32_t
-	KERNEL_HEAP_END = 0xFFFFF000,
-	KERNEL_HEAP_BEGIN = KERNEL_HEAP_END - 256 * 1024 * 1024;
 
 // used for memory allocating before calling kheap_init
 static void* kmalloc_pre_init(uint32_t size, int palign);

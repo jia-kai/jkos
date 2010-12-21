@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Thu Dec 16 16:55:34 2010 +0800
+# $Date: Tue Dec 21 11:10:10 2010 +0800
 
 #
 # This file is part of JKOS
@@ -45,16 +45,20 @@ hda.img: kernel.bin initrd
 	sudo losetup -d /dev/loop0
 
 $(OBJ_DIR)/%.d: %.cpp
-	$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(<:.cpp=.o) $(OBJ_DIR)/$(<:.cpp=.d)" "$<"  > "$@"
+	@echo "Calculating depedencies of $< ..."
+	@$(CXX) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(<:.cpp=.o) $(OBJ_DIR)/$(<:.cpp=.d)" "$<"  > "$@"
 
 $(OBJ_DIR)/%.d: %.S
-	echo "$(OBJ_DIR)/$(<:.S=.o): $<" > "$@"
+	@echo "Calculating depedencies of $< ..."
+	@$(CC) $(INCLUDE_DIR) $(DEFINES) -M -MT "$(OBJ_DIR)/$(<:.S=.o) $(OBJ_DIR)/$(<:.S=.d)" "$<"  > "$@"
 
 $(OBJ_DIR)/%.o: %.cpp
-	$(CXX) -c $< -o $@ $(CXXFLAGS)
+	@echo "Compiling $< ..."
+	@$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 $(OBJ_DIR)/%.o: %.S
-	$(CC) $(INCLUDE_DIR) $(DEFINES) -c $< -o $@
+	@echo "Compiling $< ..."
+	@$(CC) $(INCLUDE_DIR) $(DEFINES) -c $< -o $@
 
 sinclude $(DEPFILES)
 

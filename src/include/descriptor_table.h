@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.h
- * $Date: Thu Dec 09 11:01:36 2010 +0800
+ * $Date: Tue Dec 21 11:36:27 2010 +0800
  *
  * descriptor table structures
  *
@@ -97,11 +97,6 @@ extern void isr_eoi(int int_no);
  * initialize descriptor tables (GDT, IDT, TSS)
  */
 extern void init_descriptor_tables();
-
-/*
- * set the kernel stack address in the TSS
- */
-extern void set_kernel_stack(uint32_t addr);
 
 #endif
 

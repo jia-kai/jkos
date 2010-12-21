@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Fri Dec 17 17:26:04 2010 +0800
+ * $Date: Tue Dec 21 10:45:55 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -40,7 +40,7 @@ namespace Page
 		uint32_t cache_dis	: 1;	// this page will not cached iff it is set
 		uint32_t accessed	: 1;	// whether this page has been read or written to
 		uint32_t zero		: 6;	// set size to 4kb; other fields not used
-		uint32_t addr		: 20;	// page table 4kb aligned address
+		uint32_t addr		: 20;	// page table 4kb aligned physical address
 	} __attribute__((packed));
 
 	struct Table_entry_t
@@ -102,7 +102,7 @@ namespace Page
 		// if the page has no corresponding frame:
 		//		if @alloc is true, a new frame will be allocated
 		//		otherwise -1 is returned
-		uint32_t get_physical_addr(void *addr, bool alloc = false, bool user = true, bool writable = false);
+		uint32_t get_physical_addr(void *addr, bool alloc = false, bool user = false, bool writable = true);
 	};
 
 	/*

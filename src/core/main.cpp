@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Dec 20 22:01:07 2010 +0800
+ * $Date: Tue Dec 21 11:39:01 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -50,84 +50,59 @@ static void wait_key()
 	while (!last_key);
 }
 
-extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
+void test_alloc()
 {
-	init_descriptor_tables();
-	Scio::init();
-
-	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
-	{
-		Scio::printf("invalid magic: 0x%x\n", magic);
-		return;
-	}
-
-	Page::init(mbd);
-	cxxsupport_init();
-	Task::init();
-	Syscall::init();
-
-	init_timer();
-	isr_register(ISR_GET_NUM_BY_IRQ(1), isr_kbd);
-
-	asm volatile ("sti");
-
-	Scio::printf("hello, world!\n");
-
-
-	/*
-	volatile int *x = NULL;
-	*x = 0;
-	*/
-
-	/*
-	wait_key();
-	
+#if 1
 	for (int l = 0; l < 3; l ++)
 	{
 		Scio::printf("\n\nLoop %d:\n", l);
-		uint32_t ptr[3];
+		void* ptr[3];
 		for (int i = 0; i < 3; i ++)
 		{
-			Scio::printf("subloop %d\n", i);
-			ptr[i] = (uint32_t)kmalloc(8 + i, 12);
-			Scio::printf("\nptr[%d]=0x%x\n", i, ptr[i]);
+			Scio::printf("\nsubloop %d\n", i);
+			ptr[i] = kmalloc(8 + i, 12);
+			Scio::printf("arg=%d,%d  ptr[%d]=%p ",
+					8 + i, 12, i, ptr[i]);
+			*(volatile char*)ptr[i] = 'x';
+			Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr[i])));
 			kheap_output_debug_msg();
-			*(char*)ptr[i] = 'x';
 			wait_key();
 		}
 
 		for (int i = 0; i < 3; i ++)
 		{
-			Scio::printf("subloop %d\n", i);
+			Scio::printf("\nsubloop %d\n", i);
 			kfree((void*)ptr[i]);
-			Scio::printf("\nptr[%d] freed (orig addr=0x%x)\n", i, ptr[i]);
+			Scio::printf("ptr[%d] freed (orig addr=%p)\n", i, ptr[i]);
 			kheap_output_debug_msg();
 			wait_key();
 		}
 	}
-	*/
+#endif
 
-
-	/*
-	for (int i = 0; i < 3; i ++)
+	for (int i = 0; i < 4; i ++)
 	{
-		int volatile *x = (int*)kmalloc(sizeof(int));
-		Scio::printf("addr=%p\n", x);
+		int *x = (int*)kmalloc(sizeof(int), i & 1 ? 12 : 0);
+		Scio::printf("arg=%d,%d addr=%p ", sizeof(int),
+				i & 1 ? 12 : 0, x);
+		*(volatile int *)x = 1;
+		Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(x)));
+		kfree(x);
 		wait_key();
-		*x = 1;
-		kfree((void*)x);
 	}
-	*/
 
-	//kfree(0);
-
-	/*
 	int *ptr = new int[8192];
+	Scio::printf("new int[8192]: addr=%p ", ptr);
 	memset(ptr, 0, sizeof(int) * 8192);
+	Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr)));
 	kheap_output_debug_msg();
-	delete []ptr;
-	*/
 
+	wait_key();
+	delete []ptr;
+}
+
+void test_usermode()
+{
 	uint32_t uaddr = 0x54323000, uesp = uaddr + 0x500;
 	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
 	uint32_t fbegin, fend;
@@ -181,7 +156,10 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	Task::switch_to_user_mode(uaddr, uesp);
 
-	/*
+}
+
+void test_fork(Multiboot_info_t *mbd)
+{
 	Task::pid_t fork_ret = Task::fork();
 	Task::pid_t pid = Task::getpid();
 
@@ -215,12 +193,40 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	Scio::printf("(pid %d) done\n", pid);
 	for (; ;);
+}
+
+extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
+{
+	init_descriptor_tables();
+	Scio::init();
+
+	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+	{
+		Scio::printf("invalid magic: 0x%x\n", magic);
+		return;
+	}
+
+	Page::init(mbd);
+	cxxsupport_init();
+	Task::init();
+	Syscall::init();
+
+	init_timer();
+	isr_register(ISR_GET_NUM_BY_IRQ(1), isr_kbd);
+
+	asm volatile ("sti");
+
+	Scio::printf("hello, world!\n");
+
+	/*
+	volatile int *x = NULL;
+	*x = 0;
 	*/
 
-	cxxsupport_finalize();
-	panic("test");
+	test_alloc();
+	// test_fork(mbd);
 
-	wait_key();
+	cxxsupport_finalize();
 }
 
 void init_timer()

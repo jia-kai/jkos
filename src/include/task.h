@@ -1,6 +1,6 @@
 /*
  * $File: task.h
- * $Date: Mon Dec 20 20:05:45 2010 +0800
+ * $Date: Mon Dec 20 23:31:51 2010 +0800
  *
  * task scheduling and managing
  */
@@ -45,9 +45,6 @@ namespace Task
 
 	// whether the current task is kernel code or user program
 	extern bool is_kernel();
-
-	// test whether the virtual address lies in kernel stack
-	extern bool is_in_kernel_stack(uint32_t addr);
 
 	// switch to user mode and continue execution at address @addr,
 	// with esp set to @esp

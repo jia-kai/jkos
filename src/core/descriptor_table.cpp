@@ -1,6 +1,6 @@
 /*
  * $File: descriptor_table.cpp
- * $Date: Mon Dec 20 15:45:12 2010 +0800
+ * $Date: Tue Dec 21 11:38:45 2010 +0800
  *
  * initialize descriptor tables
  *
@@ -69,7 +69,6 @@ struct TSS_entry_t
 		ldt;
 	uint16_t reserved, iomap_base;
 } __attribute__((packed));
-static TSS_entry_t	tss_entry;
 
 
 #define LOOP_ALL_INTERRUPT(func) \
@@ -98,6 +97,7 @@ void init_gdt()
 {
 	static GDT_entry_t	gdt_entries[6];
 	static GDT_ptr_t	gdt_ptr;
+	static TSS_entry_t	tss_entry;
 
 	gdt_ptr.limit = sizeof(gdt_entries) - 1;
 	gdt_ptr.base = (uint32_t)&gdt_entries;
@@ -121,6 +121,7 @@ void init_gdt()
 	tss_entry.ss0 = KERNEL_DATA_SELECTOR;
 	tss_entry.cs = KERNEL_CODE_SELECTOR | 0x03;
 	tss_entry.ss = tss_entry.ds = tss_entry.es = tss_entry.fs = tss_entry.gs = KERNEL_DATA_SELECTOR | 0x03;
+	tss_entry.esp0 = KERNEL_STACK_POS;
 	gdt_entries[5].set((uint32_t)&tss_entry, ((uint32_t)&tss_entry) + sizeof(TSS_entry_t), 0b11101001, 0);
 
 	gdt_flush((uint32_t)&gdt_ptr);
@@ -258,10 +259,5 @@ void isr_eoi(int int_no)
 	if (int_no >= 40)
 		Port::outb(PIC2_COMMAND, 0x20); // send reset signal to slave
 	Port::outb(PIC1_COMMAND, 0x20); // send reset signal to master
-}
-
-void set_kernel_stack(uint32_t addr)
-{
-	tss_entry.esp0 = addr;
 }
 
