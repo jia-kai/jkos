@@ -1,6 +1,6 @@
 /*
  * $File: task.h
- * $Date: Mon Dec 20 23:31:51 2010 +0800
+ * $Date: Thu Dec 23 18:29:03 2010 +0800
  *
  * task scheduling and managing
  */
@@ -28,11 +28,10 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <common.h>
 #include <signal.h>
+#include <types.h>
 
 namespace Task
 {
-	typedef uint32_t pid_t;
-
 	extern void init();
 
 	// called by timer hook
@@ -42,6 +41,13 @@ namespace Task
 	extern pid_t fork();
 	extern pid_t getpid();
 	extern void exit(int status);
+
+	// suspend the execution of task with pid @pid
+	// the task will be automatically resumed on receiving any signal in @sig_wakeup
+	extern int sleep(pid_t pid, const Sigset &sig_wakeup);
+
+	extern int wakeup(pid_t pid);
+
 
 	// whether the current task is kernel code or user program
 	extern bool is_kernel();

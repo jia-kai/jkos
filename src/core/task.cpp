@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Tue Dec 21 15:04:00 2010 +0800
+ * $Date: Thu Dec 23 21:43:26 2010 +0800
  *
  * task scheduling and managing
  */
@@ -30,21 +30,25 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <asm.h>
 #include <kheap.h>
 #include <descriptor_table.h>
+#include <user.h>
+#include <errno.h>
 #include <lib/cstring.h>
 #include <lib/rbtree.h>
 
 using namespace Task;
 
-// struct definitions
+// struct and type definitions
 struct Task_t;
 struct Pair_id_task
 {
 	pid_t id;
-	volatile Task_t *task;
+	Task_t *task;
 	inline bool operator < (const Pair_id_task &p) const
 	{ return id < p.id; }
 };
 typedef Rbt<Pair_id_task> Rbt_id_task;
+
+enum Task_state_t {TS_RUNNING, TS_SLEEPING, TS_ZOMBIE};
 
 struct Task_t
 {
@@ -52,11 +56,18 @@ struct Task_t
 	uint32_t esp, ebp, eip;
 	Page::Directory_t *page_dir;
 
+	Task_state_t state;
+
+	uid_t uid;
+	gid_t gid;
+
 	int errno; // saved error number of current task
 
-	volatile Task_t
+	Task_t
 		*par, // parent task
 		*queue_next, *queue_prev; // next and previuos task in the task queue
+
+	Sigset sig_wakeup;
 
 	Task_t(Page::Directory_t *dir);
 
@@ -65,37 +76,34 @@ struct Task_t
 
 private:
 	uint8_t rbt_node_mem[sizeof(Rbt_id_task::Node) + 1];
-	static volatile Task_t *latest_task;
+	static Task_t *latest_task;
 };
  
 struct Task_queue
 {
 	// task queue is a cycle queue
 
-	volatile Task_t *ptr;
+	Task_t *ptr;
 	// pointer to an arbitrary task in this queue, or NULL iff the queue is empty
 
-	void insert(volatile Task_t *task);
+	void insert(Task_t *task);
 
 	// remove a task from this queue
 	// @task must be in this queue (no check performed!)
-	void remove(volatile Task_t *task);
+	void remove(Task_t *task);
 };
 
 
 
 // variable definitions
 static bool switch_to_user_mode_called = false;
-static volatile Task_t *current_task;
+static Task_t *current_task;
 static Rbt_id_task rbt_id2task(Task_t::rbt_alloc, Task_t::rbt_free);
-volatile Task_t *Task_t::latest_task;
+Task_t *Task_t::latest_task;
 extern "C" uint32_t initial_stack_pointer; // defined in loader.s
 namespace Queue
 {
-	Task_queue
-		running,
-		stopped, // stopped, both interruptible and uninterruptible
-		zombie;
+	Task_queue running, sleeping, zombie;
 }
 
 
@@ -105,9 +113,10 @@ namespace Queue
 // (to avoid being linked when cloing page directories)
 static void move_stack();
 
-static inline volatile Task_t* get_next_task();
-static inline volatile Task_t* id2task(pid_t pid);
+static inline Task_t* id2task(pid_t pid);
 static inline pid_t get_next_pid();
+static inline void switch_task(Task_t *t, uint32_t old_eflags) __attribute__((noreturn));
+static inline Task_t* get_next_task();
 
 // defined in misc.s
 extern "C" uint32_t read_eip();
@@ -121,6 +130,50 @@ asm volatile \
   : "=g"(_var_) \
 )
 
+#define RESTORE_EFLAGS(_var_) \
+asm volatile \
+( \
+	"pushl %0\n" \
+	"popf" \
+	: : "g"(_var_) \
+)
+
+// check whether current task has permission to operate on target task
+// if permission denied, errno is set and -1 is returned
+#define CHECK_PERM(_task_) \
+do \
+{ \
+	if ((_task_)->uid != current_task->uid && !User::cap_test(current_task->uid, User::CAP_KILL)) \
+	{ \
+		set_errno(EPERM); \
+		return -1; \
+	} \
+} while(0)
+
+// get task by pid, which while make the
+// current function produce an error if  it does not exist
+#define GET_TASK_BY_ID(_id_) \
+({ \
+	 Task_t *t = id2task(_id_); \
+	 if (!t) \
+	 { \
+		set_errno(ESRCH); \
+		return -1; \
+	 } \
+	 t; \
+ })
+#define GET_TASK_BY_ID_NOZOMBIE(_id_) \
+({ \
+	 Task_t *t = id2task(_id_); \
+	 if (!t || t->state == TS_ZOMBIE) \
+	 { \
+		set_errno(ESRCH); \
+		return -1; \
+	 } \
+	 t; \
+ })
+
+
 
 // function implementations
 
@@ -130,6 +183,8 @@ void Task::init()
 
 	// initialise the first task (kernel task)
 	current_task = new Task_t(Page::current_page_dir);
+	current_task->uid = 0;
+	current_task->gid = 0;
 	Queue::running.insert(current_task);
 
 	schedule();
@@ -143,11 +198,13 @@ pid_t Task::fork()
 	CLI_SAVE_EFLAGS(old_eflags);
 
 	uint32_t eip;
-	volatile Task_t *par_task = current_task, *child;
+	Task_t *par_task = current_task, *child;
 	pid_t ret = 0;
 
 	child = new Task_t(Page::clone_directory(Page::current_page_dir));
 	child->par = par_task;
+	child->uid = par_task->uid;
+	child->gid = par_task->gid;
 	Queue::running.insert(child);
 
 	eip = read_eip();
@@ -169,12 +226,7 @@ pid_t Task::fork()
 
 	}
 
-	asm volatile // restore interrupt state
-	(
-		"pushl %0\n"
-		"popf\n"
-		: : "g"(old_eflags)
-	); 
+	RESTORE_EFLAGS(old_eflags);
 
 	return ret;
 }
@@ -200,34 +252,73 @@ void Task::schedule()
 	current_task->ebp = ebp;
 	current_task->eip = eip;
 
-	current_task = get_next_task();
-
-	esp = current_task->esp;
-	ebp = current_task->ebp;
-	eip = current_task->eip;
-
-	Page::current_page_dir = current_task->page_dir;
-	asm volatile
-	(
-		"movl %[old_eflags], %%ebx\n"
-		"movl %0, %%eax\n"
-		"movl %1, %%ecx\n"
-		"movl %2, %%esp\n"
-		"movl %3, %%cr3\n"
-		"movl %%eax, %%ebp\n" // IMPORTANT: ebp must be changed last
-		"movl $0xFFFFFFFF, %%eax\n"
-			// so after jump, we can replace the return value of read_eip() above
-		"pushl %%ebx\n"
-		"popf\n"
-		"jmp *%%ecx"
-		: : "g"(ebp), "g"(eip), "g"(esp), "g"(Page::current_page_dir->phyaddr), [old_eflags]"g"(old_eflags)
-		: "eax", "ebx", "ecx"
-	);
+	switch_task(get_next_task(), old_eflags);
 }
 
 pid_t Task::getpid()
 {
 	return current_task->id;
+}
+
+int Task::sleep(pid_t pid, const Sigset &sig_wakeup)
+{
+	Task_t *target = GET_TASK_BY_ID_NOZOMBIE(pid);
+	CHECK_PERM(target);
+	uint32_t old_eflags;
+	CLI_SAVE_EFLAGS(old_eflags);
+
+	if (target->state == TS_RUNNING)
+	{
+		Task_t *next;
+		if (target == current_task)
+			next = get_next_task();
+
+		Queue::running.remove(target);
+		Queue::sleeping.insert(target);
+		target->state = TS_SLEEPING;
+		target->sig_wakeup = sig_wakeup;
+
+		if (target == current_task)
+		{
+			// a task wants itself to sleep
+
+			uint32_t eip = read_eip();
+			if (eip == 0xFFFFFFFF) // on waking up
+			{
+				RESTORE_EFLAGS(old_eflags);
+				return 0;
+			}
+			asm volatile
+			(
+				"mov %%esp, %0\n"
+				"mov %%ebp, %1\n"
+				: "=g"(current_task->esp), "=g"(current_task->ebp)
+			);
+			current_task->eip = eip;
+			switch_task(next, old_eflags);
+		}
+	}
+	RESTORE_EFLAGS(old_eflags);
+	return 0;
+}
+
+int Task::wakeup(pid_t pid)
+{
+	Task_t *target = GET_TASK_BY_ID_NOZOMBIE(pid);
+	CHECK_PERM(target);
+	uint32_t old_eflags;
+	CLI_SAVE_EFLAGS(old_eflags);
+
+	if (target->state == TS_SLEEPING)
+	{
+		Queue::sleeping.remove(target);
+		Queue::running.insert(target);
+		target->state = TS_RUNNING;
+	}
+
+	RESTORE_EFLAGS(old_eflags);
+
+	return 0;
 }
 
 void Task::exit(int status)
@@ -237,10 +328,9 @@ void Task::exit(int status)
 	status = old_eflags;
 }
 
-
 Task_t::Task_t(Page::Directory_t *dir) :
 	id(get_next_pid()), esp(0), ebp(0), eip(0),
-	page_dir(dir), errno(0),
+	page_dir(dir), state(TS_RUNNING), errno(0),
 	par(NULL), queue_next(NULL), queue_prev(NULL)
 {
 	Task_t::latest_task = this;
@@ -250,7 +340,7 @@ Task_t::Task_t(Page::Directory_t *dir) :
 	rbt_id2task.insert(val);
 }
 
-void Task_queue::insert(volatile Task_t *task)
+void Task_queue::insert(Task_t *task)
 {
 	if (!ptr)
 	{
@@ -266,7 +356,7 @@ void Task_queue::insert(volatile Task_t *task)
 	}
 }
 
-void Task_queue::remove(volatile Task_t *task)
+void Task_queue::remove(Task_t *task)
 {
 	if (ptr->queue_next == ptr)
 	{
@@ -280,14 +370,6 @@ void Task_queue::remove(volatile Task_t *task)
 		task->queue_next->queue_prev = task->queue_prev;
 		task->queue_prev = task->queue_next = NULL;
 	}
-}
-
-pid_t get_next_pid()
-{
-	static pid_t next;
-	while (id2task(next))
-		next ++;
-	return next ++;
 }
 
 bool Task::is_kernel()
@@ -321,6 +403,14 @@ void Task::switch_to_user_mode(uint32_t addr, uint32_t esp)
 		: : "i"(USER_DATA_SELECTOR | 0x3), "g"(esp), "i"(USER_CODE_SELECTOR | 0x3), "g"(addr)
 		: "eax"
 	);
+}
+
+pid_t get_next_pid()
+{
+	static pid_t next;
+	while (id2task(next))
+		next ++;
+	return next ++;
 }
 
 void move_stack()
@@ -365,17 +455,47 @@ void move_stack()
 	);
 }
 
+void switch_task(Task_t *t, uint32_t old_eflags)
+{
+	current_task = t;
+
+	uint32_t
+		esp = current_task->esp,
+		ebp = current_task->ebp,
+		eip = current_task->eip;
+
+	Page::current_page_dir = current_task->page_dir;
+	asm volatile
+	(
+		"movl %[old_eflags], %%ebx\n"
+		"movl %0, %%eax\n"
+		"movl %1, %%ecx\n"
+		"movl %2, %%esp\n"
+		"movl %3, %%cr3\n"
+		"movl %%eax, %%ebp\n" // IMPORTANT: ebp must be changed last
+		"movl $0xFFFFFFFF, %%eax\n"
+			// so after jump, we can replace the return value of read_eip() in schedule()
+		"pushl %%ebx\n"
+		"popf\n"
+		"jmp *%%ecx"
+		: : "g"(ebp), "g"(eip), "g"(esp), "g"(Page::current_page_dir->phyaddr), [old_eflags]"g"(old_eflags)
+		: "eax", "ebx", "ecx"
+	);
+
+	for (; ;); // this line should never be reached; just to emit gcc's warning
+}
+
+Task_t* get_next_task()
+{
+	return current_task->queue_next;
+}
+
 void set_errno(int errno)
 {
 	current_task->errno = errno;
 }
 
-volatile Task_t* get_next_task()
-{
-	return current_task->queue_next;
-}
-
-volatile Task_t* id2task(pid_t pid)
+Task_t* id2task(pid_t pid)
 {
 	Pair_id_task req;
 	req.id = pid;

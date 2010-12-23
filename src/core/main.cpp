@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Tue Dec 21 16:17:26 2010 +0800
+ * $Date: Thu Dec 23 21:47:08 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -160,8 +160,8 @@ void test_usermode()
 
 void test_fork(Multiboot_info_t *mbd)
 {
-	Task::pid_t fork_ret = Task::fork();
-	Task::pid_t pid = Task::getpid();
+	pid_t fork_ret = Task::fork();
+	pid_t pid = Task::getpid();
 
 	for (int i = 0; i < 10; i ++)
 	{
@@ -191,6 +191,29 @@ void test_fork(Multiboot_info_t *mbd)
 
 	Scio::printf("(pid %d) done\n", pid);
 	for (; ;);
+}
+
+void test_sleep()
+{
+	Task::fork();
+	pid_t pid = Task::getpid();
+	if (pid == 0)
+		Task::sleep(0, Sigset()); // sleep self
+
+	for (int i = 0; ; i ++)
+	{
+		if (i == 10)
+		{
+			if (pid == 1)
+				Task::wakeup(0);
+			else if (pid == 0)
+				Task::sleep(1, Sigset()); // sleep other
+		}
+		if (i == 20 && pid == 0)
+			Task::wakeup(1);
+		Scio::printf("pid %d: %d\n", pid, i);
+		for (int volatile j = 0; j  < 10000000; j ++);
+	}
 }
 
 extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
@@ -223,7 +246,8 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	// test_alloc();
 	// test_fork(mbd);
-	test_usermode();
+	// test_usermode();
+	test_sleep();
 
 	cxxsupport_finalize();
 }

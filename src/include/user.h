@@ -1,8 +1,8 @@
 /*
- * $File: signal.h
- * $Date: Thu Dec 23 19:33:13 2010 +0800
+ * $File: user.h
+ * $Date: Thu Dec 23 16:21:04 2010 +0800
  *
- * functions for manipulating signals
+ * user and user permission management
  */
 /*
 This file is part of JKOS
@@ -23,26 +23,18 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_SIGNAL
-#define HEADER_SIGNAL
+#ifndef HEADER_USER
+#define HEADER_USER
 
-#include <common.h>
+#include <types.h>
 
-const int NSIGNAL_MAX = 32;
-class Sigset
+namespace User
 {
-	uint32_t val[NSIGNAL_MAX / 32];
-public:
-	Sigset();
-	Sigset(const Sigset &s);
-
-	Sigset& operator = (const Sigset &s);
-
-	void clear();
-	void fill();
-	void add(int signum);
-	void del(int signum);
-	bool test(int signum);
-};
+	enum Cap_t
+	{
+		CAP_KILL
+	};
+	int cap_test(uid_t uid, Cap_t cap);
+}
 
 #endif
