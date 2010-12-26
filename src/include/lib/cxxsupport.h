@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_CXXSUPPORT
-#define HEADER_CXXSUPPORT
+#ifndef _HEADER_CXXSUPPORT_
+#define _HEADER_CXXSUPPORT_
 
 // should only be called by kmail
 extern void cxxsupport_init();

@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_RAMDISK
-#define HEADER_RAMDISK
+#ifndef _HEADER_RAMDISK_
+#define _HEADER_RAMDISK_
 
 #include <fs/base.h>
 #include <common.h>

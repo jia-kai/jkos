@@ -1,6 +1,6 @@
 /*
  * $File: errno.h
- * $Date: Mon Dec 13 15:46:02 2010 +0800
+ * $Date: Sun Dec 26 20:13:39 2010 +0800
  *
  * errno definitions
  */
@@ -23,13 +23,20 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_ERRNO
-#define HEADER_ERRNO
+#ifndef _HEADER_ERRNO_
+#define _HEADER_ERRNO_
 
 // defined in task.cpp
 extern void set_errno(int errno);
 
-#include <errno-base.h>
+#include <errno_base.h>
+
+#define ERROR_RETURN(_errno_) \
+do \
+{ \
+	set_errno(_errno_); \
+	return -1; \
+} while (0)
 
 #define ENOTSUP		35	/* operation not supported */
 

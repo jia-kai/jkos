@@ -23,12 +23,12 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_CSTRING
-#define HEADER_CSTRING
+#ifndef _HEADER_CSTRING_
+#define _HEADER_CSTRING_
 
 extern void memset(void *dest, int val, int cnt);
 extern void memcpy(void *dest, const void *src, int cnt);
 extern char* strcpy(char *dest, const char *src);
 
-#endif // HEADER_CSTRING
+#endif // _HEADER_CSTRING_
 

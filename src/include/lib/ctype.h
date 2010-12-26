@@ -21,8 +21,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_CTYPE
-#define HEADER_CTYPE
+#ifndef _HEADER_CTYPE_
+#define _HEADER_CTYPE_
 
 static inline int isascii(int c)
 {

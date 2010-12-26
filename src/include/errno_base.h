@@ -1,6 +1,6 @@
 /*
- * $File: errno-base.h
- * $Date: Mon Dec 13 15:26:03 2010 +0800
+ * $File: errno_base.h
+ * $Date: Sun Dec 26 20:13:27 2010 +0800
  *
  * basic errno definitions
  *
@@ -25,8 +25,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_ERRNO_BASE
-#define HEADER_ERRNO_BASE
+#ifndef _HEADER_ERRNO_BASE_
+#define _HEADER_ERRNO_BASE_
 
 #define	EPERM		1	/* Operation not permitted */
 #define	ENOENT		2	/* No such file or directory */

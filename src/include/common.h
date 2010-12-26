@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Tue Dec 21 11:05:48 2010 +0800
+ * $Date: Sun Dec 26 19:35:32 2010 +0800
  *
  * some common definitions and functions
  */
@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_COMMON
-#define HEADER_COMMON
+#ifndef _HEADER_COMMON_
+#define _HEADER_COMMON_
 
 typedef char int8_t;
 typedef unsigned char uint8_t;
@@ -54,6 +54,23 @@ extern void _kassert_failed(const char *statement, const char *file, int line) _
 #	define kassert(s) do {} while(0)
 #endif
 
+#define CLI_SAVE_EFLAGS(_var_) \
+asm volatile \
+( \
+	"pushf\n" \
+	"cli\n" \
+	"popl %0" \
+  : "=g"(_var_) \
+)
+
+#define RESTORE_EFLAGS(_var_) \
+asm volatile \
+( \
+	"pushl %0\n" \
+	"popf" \
+	: : "g"(_var_) \
+)
+
 template <typename T>
 static inline const T& max(const T &a, const T &b)
 { return a > b ? a : b; }
@@ -79,5 +96,5 @@ static const uint32_t
 	KERNEL_HEAP_BEGIN	= KERNEL_HEAP_END - 256 * 1024 * 1024;
 
 
-#endif // HEADER_COMMON
+#endif // _HEADER_COMMON_
 

@@ -22,8 +22,8 @@
  *  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef HEADER_MULTIBOOT
-#define HEADER_MULTIBOOT
+#ifndef _HEADER_MULTIBOOT_
+#define _HEADER_MULTIBOOT_
 
 /* How many bytes from the start of the file we search for the header. */
 #define MULTIBOOT_SEARCH                        8192
@@ -218,5 +218,5 @@ struct Multiboot_mod_list
 
 #endif // ASM_FILE
 
-#endif // HEADER_MULTIBOOT
+#endif // _HEADER_MULTIBOOT_
 

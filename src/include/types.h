@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_TYPES
-#define HEADER_TYPES
+#ifndef _HEADER_TYPES_
+#define _HEADER_TYPES_
 
 #include <common.h>
 

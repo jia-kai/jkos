@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_SIGNAL
-#define HEADER_SIGNAL
+#ifndef _HEADER_SIGNAL_
+#define _HEADER_SIGNAL_
 
 #include <common.h>
 

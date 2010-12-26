@@ -1,6 +1,8 @@
 /*
- * $File: stdarg.h
- * $Date: Fri Nov 26 20:35:57 2010 +0800
+ * $File: elf.h
+ * $Date: Sun Dec 26 20:26:09 2010 +0800
+ *
+ * functions for loading ELFs
  */
 /*
 This file is part of JKOS
@@ -21,14 +23,14 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef _HEADER_ELF_
+#define _HEADER_ELF_
 
-#ifndef _HEADER_STDARG_
-#define _HEADER_STDARG_
+#include <fs/base.h>
 
-#define va_start(v,l) __builtin_va_start(v,l)
-#define va_arg(v,l)   __builtin_va_arg(v,l)
-#define va_end(v)     __builtin_va_end(v)
-#define va_copy(d,s)  __builtin_va_copy(d,s)
-typedef __builtin_va_list va_list;
+// load the elf file @file into current page directory
+// return a positive integer telling the entrance address,
+// or -1 on error and errno is set accordingly
+extern int load_elf(Fs::Node_file *file);
 
 #endif

@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_KHEAP
-#define HEADER_KHEAP
+#ifndef _HEADER_KHEAP_
+#define _HEADER_KHEAP_
 
 #include <common.h>
 
@@ -57,5 +57,5 @@ extern uint32_t kheap_get_size_pre_init();
 extern void kheap_output_debug_msg();
 #endif
 
-#endif // HEADER_KHEAP
+#endif // _HEADER_KHEAP_
 

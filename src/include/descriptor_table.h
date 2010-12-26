@@ -26,8 +26,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_DESCRIPTOR_TABLE
-#define HEADER_DESCRIPTOR_TABLE
+#ifndef _HEADER_DESCRIPTOR_TABLE_
+#define _HEADER_DESCRIPTOR_TABLE_
 
 #include <common.h>
 

@@ -27,8 +27,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_RBTREE
-#define HEADER_RBTREE
+#ifndef _HEADER_RBTREE_
+#define _HEADER_RBTREE_
 
 #include <common.h>
 

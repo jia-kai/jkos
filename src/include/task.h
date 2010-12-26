@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_TASK
-#define HEADER_TASK
+#ifndef _HEADER_TASK_
+#define _HEADER_TASK_
 
 #include <common.h>
 #include <signal.h>
@@ -57,5 +57,5 @@ namespace Task
 	extern void switch_to_user_mode(uint32_t addr, uint32_t esp);
 }
 
-#endif // HEADER_TASK
+#endif // _HEADER_TASK_
 

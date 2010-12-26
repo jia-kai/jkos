@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Thu Dec 23 21:47:08 2010 +0800
+ * $Date: Sun Dec 26 19:15:46 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -32,6 +32,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <task.h>
 #include <syscall.h>
+#include <elf.h>
 #include <drv/ramdisk.h>
 #include <lib/cxxsupport.h>
 #include <lib/cstring.h>
@@ -216,6 +217,16 @@ void test_sleep()
 	}
 }
 
+void test_elf(Multiboot_info_t *mbd)
+{
+	kassert(mbd->mods_count);
+	uint32_t start = *(uint32_t*)mbd->mods_addr,
+			 end = *(uint32_t*)(mbd->mods_addr + 4);
+	load_elf(ramdisk_get_file_node(start, end));
+	panic("load_elf returned");
+}
+
+
 extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 {
 	init_descriptor_tables();
@@ -247,7 +258,8 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	// test_alloc();
 	// test_fork(mbd);
 	// test_usermode();
-	test_sleep();
+	// test_sleep();
+	test_elf(mbd);
 
 	cxxsupport_finalize();
 }

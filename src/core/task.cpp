@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Thu Dec 23 21:43:26 2010 +0800
+ * $Date: Sun Dec 26 19:34:57 2010 +0800
  *
  * task scheduling and managing
  */
@@ -120,23 +120,6 @@ static inline Task_t* get_next_task();
 
 // defined in misc.s
 extern "C" uint32_t read_eip();
-
-#define CLI_SAVE_EFLAGS(_var_) \
-asm volatile \
-( \
-	"pushf\n" \
-	"cli\n" \
-	"popl %0" \
-  : "=g"(_var_) \
-)
-
-#define RESTORE_EFLAGS(_var_) \
-asm volatile \
-( \
-	"pushl %0\n" \
-	"popf" \
-	: : "g"(_var_) \
-)
 
 // check whether current task has permission to operate on target task
 // if permission denied, errno is set and -1 is returned

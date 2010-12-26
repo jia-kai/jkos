@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_FS_BASE
-#define HEADER_FS_BASE
+#ifndef _HEADER_FS_BASE_
+#define _HEADER_FS_BASE_
 
 #include <common.h>
 
@@ -139,5 +139,5 @@ namespace Fs
 
 }
 
-#endif // HEADER_FS_BASE
+#endif // _HEADER_FS_BASE_
 

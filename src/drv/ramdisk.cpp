@@ -1,6 +1,6 @@
 /*
  * $File: ramdisk.cpp
- * $Date: Tue Dec 14 17:19:33 2010 +0800
+ * $Date: Sun Dec 26 19:37:14 2010 +0800
  *
  * RAM disk
  */
@@ -98,13 +98,14 @@ public:
 		if (!cnt)
 			return 0;
 
-		asm volatile ("pushf\ncli");
-		// disable interrupt while writing
+		uint32_t old_eflags;
+		CLI_SAVE_EFLAGS(old_eflags);
+		// disable interrupt while reading
 
 		memcpy(buf, (void*)(this->start + this->cur_offset), cnt);
 		this->cur_offset += cnt;
-		asm volatile ("popf");
 
+		RESTORE_EFLAGS(old_eflags);
 		return cnt;
 	}
 
@@ -120,13 +121,14 @@ public:
 		if (!cnt)
 			return 0;
 
-		asm volatile ("pushf\ncli");
+		uint32_t old_eflags;
+		CLI_SAVE_EFLAGS(old_eflags);
 		// disable interrupt while writing
 
 		memcpy((void*)(this->start + this->cur_offset), buf, cnt);
 		this->cur_offset += cnt;
-		asm volatile ("popf");
 
+		RESTORE_EFLAGS(old_eflags);
 		return cnt;
 	}
 

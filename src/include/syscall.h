@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_SYSCALL
-#define HEADER_SYSCALL
+#ifndef _HEADER_SYSCALL_
+#define _HEADER_SYSCALL_
 
 namespace Syscall
 {
@@ -41,5 +41,5 @@ namespace Syscall
 	DEFN_SYSCALL1(0, puts, const char *);
 }
 
-#endif // HEADER_SYSCALL
+#endif // _HEADER_SYSCALL_
 

@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_ASM
-#define HEADER_ASM
+#ifndef _HEADER_ASM_
+#define _HEADER_ASM_
 
 #define KERNEL_CODE_SELECTOR	0x08
 #define KERNEL_DATA_SELECTOR	0x10
@@ -34,5 +34,5 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #define TSS_DESCRIPTOR_SELECTOR	0x28
 
 
-#endif // HEADER_ASM
+#endif // _HEADER_ASM_
 

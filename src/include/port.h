@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_PORT
-#define HEADER_PORT
+#ifndef _HEADER_PORT_
+#define _HEADER_PORT_
 
 #include <common.h>
 
@@ -50,5 +50,5 @@ namespace Port
 	}
 }
 
-#endif // HEADER_PORT
+#endif // _HEADER_PORT_
 

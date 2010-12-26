@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_SCIO
-#define HEADER_SCIO
+#ifndef _HEADER_SCIO_
+#define _HEADER_SCIO_
 
 namespace Scio
 {
@@ -36,7 +36,7 @@ namespace Scio
 	extern void printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 	extern void puts(const char *str);
 
-#ifdef HEADER_STDARG
+#ifdef _HEADER_STDARG_
 	extern void vprintf(const char *fmt, va_list argp);
 #endif
 
@@ -88,5 +88,5 @@ do \
 	Scio::puts("\n"); \
 } while(0)
 
-#endif // HEADER_SCIO
+#endif // _HEADER_SCIO_
 

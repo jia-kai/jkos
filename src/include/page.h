@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Tue Dec 21 14:14:34 2010 +0800
+ * $Date: Sun Dec 26 20:57:16 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -23,8 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_PAGE
-#define HEADER_PAGE
+#ifndef _HEADER_PAGE_
+#define _HEADER_PAGE_
 
 #include <common.h>
 
@@ -94,6 +94,12 @@ namespace Page
 		//		otherwise NULL is returned
 		Table_entry_t *get_page(uint32_t addr, bool make = false);
 
+		// make the page entries containing virtual address [@start, @end)
+		void make_page_range(uint32_t begin, uint32_t end, bool user, bool writable);
+
+		// alloc physical frames for page entries containing virtual address [@start, end)
+		void alloc_page_range(uint32_t begin, uint32_t end, bool user, bool writable);
+
 		// load this page directory into the CR3 register
 		void enable();
 
@@ -125,5 +131,5 @@ namespace Page
 	extern Directory_t *current_page_dir;
 }
 
-#endif // HEADER_PAGE
+#endif // _HEADER_PAGE_
 

@@ -1,6 +1,6 @@
 /*
  * $File: base.cpp
- * $Date: Tue Dec 14 17:41:44 2010 +0800
+ * $Date: Sun Dec 26 19:59:25 2010 +0800
  *
  * file system base class
  */
@@ -44,32 +44,27 @@ Fs::Node_dir* Fs::Node_file::get_dir()
 
 Fs::off_t Fs::Node_file::seek(off_t , int )
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 ssize_t Fs::Node_file::read(void *, size_t )
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 ssize_t Fs::Node_file::write(const void *, size_t )
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 int Fs::Node_file::ioctl(uint32_t, uint32_t)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 int Fs::Node_file::stat(Stat_t *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 void Fs::Node_file::close()
@@ -131,20 +126,17 @@ int Fs::Node_dir::chmod(const char *, mode_t )
 
 int Fs::Node_dir::unlink(const char *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 int Fs::Node_dir::link(Node_file *, const char *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 int Fs::Node_dir::symlink(const char *, const char *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 Fs::Node_dir* Fs::Node_dir::mkdir(const char *, mode_t )
@@ -155,14 +147,12 @@ Fs::Node_dir* Fs::Node_dir::mkdir(const char *, mode_t )
 
 int Fs::Node_dir::rmdir(const char *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 int Fs::Node_dir::mount(Node_dir *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 bool Fs::Node_dir::is_empty()
@@ -189,8 +179,7 @@ void Fs::Node_dir::close()
 
 int Fs::Fs::mv(const char *, const char *)
 {
-	set_errno(ENOTSUP);
-	return -1;
+	ERROR_RETURN(ENOTSUP);
 }
 
 Fs::Node_dir::~Node_dir()
