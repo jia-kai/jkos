@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Tue Dec 21 15:34:37 2010 +0800
+ * $Date: Mon Dec 27 23:16:45 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -34,16 +34,18 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #pragma GCC diagnostic ignored "-Wconversion"
 
 // defined in the linker script
-extern "C" uint32_t kernel_img_end;
+extern "C" uint32_t kernel_code_end;
 
 using namespace Page;
 
 Directory_t *Page::current_page_dir;
-static Directory_t *kernel_page_dir;
 
 // stack of usable frames
 static uint32_t *frames, nframes,
-				*frame_ref_cnt; // frame reference count
+				*frame_ref_cnt, // frame reference count
+				empty_page0_addr, empty_page1_addr, // empty page, used for page copying and zero filling
+				kernel_low_ntable;  // number of tables used by lower kernel code/data
+static Table_entry_t *empty_page0_ptr, *empty_page1_ptr;
 
 // this will be false until Page::init() finished
 static bool init_finished;
@@ -71,6 +73,29 @@ void Table_entry_t::alloc(bool user_, bool writable)
 		this->rw = writable ? 1 : 0;
 		this->user = user_ ? 1 : 0;
 	}
+}
+
+void Table_entry_t::lazy_alloc(bool user_, bool writable, bool fill_zero)
+{
+	if (!this->addr)
+	{
+		this->allocable = 1;
+		this->rw = writable ? 1 : 0;
+		this->user = user_ ? 1 : 0;
+		this->alloc_fill = fill_zero;
+	}
+}
+
+void Table_entry_t::fill_uint32(uint32_t val)
+{
+	empty_page0_ptr->addr = this->addr;
+	invlpg(empty_page0_addr);
+	asm volatile
+	(
+		"cld\n"
+		"rep stosl"
+		: : "a"(val), "c"(1024), "D"(empty_page0_addr)
+	);
 }
 
 void Table_entry_t::free()
@@ -110,10 +135,7 @@ Table_entry_t* Directory_t::get_page(uint32_t addr, bool make)
 
 		entries[tb_idx].addr = current_page_dir->get_physical_addr(tables[tb_idx]) >> 12;
 	}
-	Table_entry_t* ret = &(tables[tb_idx]->pages[tb_offset]);
-	if (make && !ret->allocable)
-		ret->allocable = true;
-	return ret;
+	return &(tables[tb_idx]->pages[tb_offset]);
 }
 
 void Directory_t::enable()
@@ -147,21 +169,17 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 
 	dest->phyaddr = current_page_dir->get_physical_addr(dest->entries);
 
-	for (uint32_t i = 0; i < (KERNEL_HEAP_END >> 22); i ++)
-		if (src->tables[i])
-		{
-			if (kernel_page_dir->tables[i] == src->tables[i])
-			{
-				// we link kernel tables
-				dest->tables[i] = src->tables[i];
-				dest->entries[i] = src->entries[i];
-			} else
-			{
-				dest->tables[i] = clone_table(src->tables[i]);
-				dest->entries[i] = src->entries[i];
-				dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i]) >> 12;
-			}
-		}
+	// we link kernel tables
+	for (uint32_t i = 0; i < kernel_low_ntable; i ++)
+	{
+		dest->tables[i] = src->tables[i];
+		dest->entries[i] = src->entries[i];
+	}
+	for (uint32_t i = KERNEL_HEAP_BEGIN >> 22; i < (KERNEL_HEAP_END >> 22); i ++)
+	{
+		dest->tables[i] = src->tables[i];
+		dest->entries[i] = src->entries[i];
+	}
 
 	// we should copy kernel stack directly instead of using copy-on-write
 	// otherwise will cause triple fault
@@ -169,10 +187,20 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	{
 		uint32_t addr = current_page_dir->get_physical_addr((void*)i);
 		if (!addr)
-			break;
+			panic("x");
 		dest->get_page(i, true);
 		copy_page_physical(dest->get_physical_addr((void*)i, true, false, true), addr);
 	}
+
+
+	// for other tables, use copy-on-write
+	for (uint32_t i = kernel_low_ntable; i < (KERNEL_HEAP_BEGIN >> 22); i ++)
+		if (src->tables[i])
+		{
+			dest->tables[i] = clone_table(src->tables[i]);
+			dest->entries[i] = src->entries[i];
+			dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i]) >> 12;
+		}
 
 	return dest;
 }
@@ -192,6 +220,42 @@ Table_t *clone_table(Table_t *src)
 	return dest;
 }
 
+void Directory_t::lazy_alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable, bool fill_zero)
+{
+	kassert((begin & 0xFFFFF000) == begin);
+	kassert((end & 0xFFFFF000) == end);
+	for (uint32_t i = begin; i < end; i += 0x1000)
+	{
+		this->get_page(i, true)->lazy_alloc(user, writable, fill_zero);
+		invlpg(i);
+	}
+}
+
+void Directory_t::free_interval(uint32_t begin, uint32_t end)
+{
+	kassert((begin & 0xFFFFF000) == begin);
+	kassert((end & 0xFFFFF000) == end);
+	for (uint32_t i = begin; i < end; i += 0x1000)
+	{
+		Table_entry_t *page = this->get_page(i);
+		if (page && page->present)
+		{
+			page->free();
+			invlpg(i);
+		}
+	}
+}
+
+void Directory_t::alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable)
+{
+	kassert((begin & 0xFFFFF000) == begin);
+	kassert((end & 0xFFFFF000) == end);
+	for (uint32_t i = begin; i < end; i += 0x1000)
+	{
+		this->get_page(i, true)->alloc(user, writable);
+		invlpg(i);
+	}
+}
 
 void Page::init(void *ptr_mbd)
 {
@@ -202,9 +266,8 @@ void Page::init(void *ptr_mbd)
 		kheap_preserve_mem((*(uint32_t*)(mbd->mods_addr + 4)) + 4);
 
 	memset(
-			kernel_page_dir = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12)),
+			current_page_dir = static_cast<Directory_t*>(kmalloc(sizeof(Directory_t), 12)),
 			0, sizeof(Directory_t));
-	current_page_dir = kernel_page_dir;
 
 	init_frames(mbd);
 
@@ -216,19 +279,20 @@ void Page::init(void *ptr_mbd)
 	// make sure virtual address and physical address of kernel code/data are the same
 	for (uint32_t i = 0x1000; i < kheap_get_size_pre_init(); i += 0x1000)
 	{
-		Table_entry_t *page = kernel_page_dir->get_page(i, true);
+		Table_entry_t *page = current_page_dir->get_page(i, true);
 		page->present = 1;
 		page->rw = 1;
 		page->user = 0;
 		page->addr = i >> 12;
 	}
+	kernel_low_ntable = ((kheap_get_size_pre_init() - 1) >> 22) + 1;
 	
 	while (frames[nframes - 1] <= (kheap_get_size_pre_init() >> 12))
 		nframes --;
 
-	kernel_page_dir->phyaddr = (uint32_t)(kernel_page_dir->entries);
+	current_page_dir->phyaddr = (uint32_t)(current_page_dir->entries);
 
-	kernel_page_dir->enable();
+	current_page_dir->enable();
 
 	asm volatile
 	(
@@ -242,7 +306,15 @@ void Page::init(void *ptr_mbd)
 
 	isr_register(14, page_fault);
 
-	clone_directory(kernel_page_dir)->enable();
+	empty_page0_addr = (uint32_t)kmalloc(1 << 13, 12);
+	empty_page1_addr = empty_page0_addr + 0x1000;
+	empty_page0_ptr = current_page_dir->get_page(empty_page0_addr);
+	kassert(empty_page0_ptr);
+	empty_page1_ptr = current_page_dir->get_page(empty_page1_addr);
+	kassert(empty_page1_ptr);
+
+	empty_page0_ptr->present = 1;
+	empty_page1_ptr->present = 1;
 
 	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
 			(kheap_get_size_pre_init() - 0x100000) >> 10, nframes, nframes * 4 / 1024);
@@ -256,16 +328,23 @@ void page_fault(Isr_registers_t reg)
 	Table_entry_t *page = current_page_dir->get_page(addr);
 	if (page && page->allocable)
 	{
+		if (!page->user && reg.eip >= (uint32_t)&kernel_code_end)
+			goto error; // user code attemps to access kernel page
+
 		if (!(reg.err_code & 1))
 		{
-			// non-present
-			page->alloc(!Task::is_kernel(), true);
+			// non-present:
+			// lazy alloc
+			page->alloc(page->user, page->rw);
+			if (page->alloc_fill)
+				page->fill_uint32(0);
 			return;
 		}
 		if (reg.err_code & 2)
 		{
-			// protection violation and write
-			if (Task::is_kernel() == !page->user)
+			// protection violation and write:
+			// copy-on-write, only used in user mode
+			if (page->user)
 			{
 				if (!page->addr || !frame_ref_cnt[page->addr])
 				{
@@ -279,7 +358,7 @@ void page_fault(Isr_registers_t reg)
 					addr = page->addr;
 					frame_ref_cnt[addr] --;
 					page->addr = 0;
-					page->alloc(page->user, true);
+					page->alloc(true, true);
 					copy_page_physical(page->addr << 12, addr << 12);
 				}
 				return;
@@ -378,27 +457,15 @@ void init_frames(Multiboot_info_t *mbd)
 
 void copy_page_physical(uint32_t dest, uint32_t src)
 {
+	empty_page0_ptr->addr = src >> 12;
+	empty_page1_ptr->addr = dest >> 12;
+	invlpg(empty_page0_addr);
+	invlpg(empty_page1_addr);
 	asm volatile
 	(
-		"pushf\n"
-		"cli\n"
-
-		// disable paging
-		"mov %%cr0, %%eax\n"
-		"and $0x7fffffff, %%eax\n"
-		"mov %%eax, %%cr0\n"
-
 		"cld\n"
-		"rep movsd\n"
-
-		// enable paging
-		"mov %%cr0, %%eax\n"
-		"or $0x80000000, %%eax\n"
-		"mov %%eax, %%cr0\n"
-
-		"popf\n"
-		: : "D"(dest), "S"(src), "c"(1024)
-		: "eax"
+		"rep movsl"
+		: : "D"(empty_page1_addr), "S"(empty_page0_addr), "c"(1024)
 	);
 }
 

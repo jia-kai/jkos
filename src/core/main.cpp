@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Sun Dec 26 19:15:46 2010 +0800
+ * $Date: Mon Dec 27 23:31:04 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -61,9 +61,9 @@ void test_alloc()
 		for (int i = 0; i < 3; i ++)
 		{
 			Scio::printf("\nsubloop %d\n", i);
-			ptr[i] = kmalloc(8 + i, 12);
+			ptr[i] = kmalloc(8 + i, 12 - i);
 			Scio::printf("arg=%d,%d  ptr[%d]=%p ",
-					8 + i, 12, i, ptr[i]);
+					8 + i, 12 - i, i, ptr[i]);
 			*(volatile char*)ptr[i] = 'x';
 			Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr[i])));
 			kheap_output_debug_msg();
@@ -104,6 +104,10 @@ void test_alloc()
 
 void test_usermode()
 {
+	Scio::printf("%s\n", __func__);
+	int *x = (int*)kmalloc(sizeof(int), 12);
+	Scio::printf("x=%p\n", x);
+
 	uint32_t uaddr = 0x54323000, uesp = uaddr + 0x500;
 	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
 	uint32_t fbegin, fend;
@@ -115,6 +119,14 @@ void test_usermode()
 		"mov %%esp, %%ebx\n"
 		"mov $1, %%eax\n"
 		"int $0x80\n"
+
+		"mov %%edx, %%ebx\n"
+		"mov $1, %%eax\n"
+		"int $0x80\n"
+
+		//"pushl (%%edx)\n"
+
+		//"1: jmp 1b\n"
 
 #if 0
 		"pushl %2\n"
@@ -155,6 +167,7 @@ void test_usermode()
 
 	Scio::printf("esp should be 0x%x\n", uesp);
 
+	asm volatile ("mov %0, %%edx"::"g"(x));
 	Task::switch_to_user_mode(uaddr, uesp);
 
 }
@@ -226,6 +239,41 @@ void test_elf(Multiboot_info_t *mbd)
 	panic("load_elf returned");
 }
 
+void test_lazy_alloc()
+{
+	for (int i = 0; i <= 0x5000; i += 0x1000)
+	{
+		Page::Table_entry_t *pg = Page::current_page_dir->get_page(0x60000000 + i, true);
+		pg->alloc(false, true);
+		pg->fill_uint32(12345);
+	}
+	for (int i = 0; i <= 0x5000; i += 0x1000)
+		Page::current_page_dir->get_page(0x60000000 + i)->free();
+	Scio::printf("lazy alloc (not filling)\n");
+	uint32_t addr = 0x67890000;
+	Page::current_page_dir->get_page(addr, true)->lazy_alloc(false, true, false);
+	Scio::printf("checking...\n");
+	for (uint32_t i = 0; i < 0x1000; i += 4)
+	{
+		uint32_t *ptr = (uint32_t*)(i + addr);
+		if (*ptr)
+		{
+			Scio::printf("%p: %d\n", ptr, *ptr);
+			break;
+		}
+	}
+	addr += 0x1000;
+	Scio::printf("lazy alloc (filling)\n");
+	Page::current_page_dir->get_page(addr, true)->lazy_alloc(false, true, true);
+	Scio::printf("checking...\n");
+	for (uint32_t i = 0; i < 0x1000; i += 4)
+	{
+		uint32_t *ptr = (uint32_t*)(i + addr);
+		if (*ptr)
+			panic("%p: %d: not zero!\n", ptr, *ptr);
+	}
+	panic("done");
+}
 
 extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 {
@@ -259,7 +307,8 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	// test_fork(mbd);
 	// test_usermode();
 	// test_sleep();
-	test_elf(mbd);
+	test_lazy_alloc();
+	// test_elf(mbd);
 
 	cxxsupport_finalize();
 }

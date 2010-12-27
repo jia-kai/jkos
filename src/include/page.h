@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Sun Dec 26 20:57:16 2010 +0800
+ * $Date: Mon Dec 27 23:12:28 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -58,17 +58,35 @@ namespace Page
 									// if CR3 is reset.
 									// Note, that the page global enable bit in
 									// CR4 must be set to enable this feature. 
-		uint32_t allocable	: 3;	// this page can be allocated iff this field is not zero (used to detect page fault)
+		uint32_t allocable	: 1;	// this page can be allocated iff this field is not zero (used to detect page fault)
+		uint32_t alloc_fill	: 2;	// whether this page will be filled with zero on allocation in page fault
 		uint32_t addr		: 20;	// physical page frame address
 
 
 		// allocate a frame for this page
+		// if a frame is already allocated, nothing happens
 		void alloc(bool user, bool writable);
 
-		// free the associated frame
+		// mark this page as allocable, but do not allocate physical memory now
+		// if a frame is already allocated, nothing happens
+		void lazy_alloc(bool user, bool writable, bool fill_zero);
+
+		void fill_uint32(uint32_t val);
+
+		// free the associated frame, and mark the page as unallocable
 		void free();
 
 	} __attribute__((packed));
+
+
+	/*
+	 * On page fault with non-present error:
+	 *	if the related page exists and is allocable, 
+	 *	a frame will be allocated,
+	 *	with fileds except @present and @addr unchanged;
+	 *	otherwise the corresponding process is considered
+	 *	encountering segmentation fault
+	 */
 
 
 	struct Table_t
@@ -94,11 +112,16 @@ namespace Page
 		//		otherwise NULL is returned
 		Table_entry_t *get_page(uint32_t addr, bool make = false);
 
-		// make the page entries containing virtual address [@start, @end)
-		void make_page_range(uint32_t begin, uint32_t end, bool user, bool writable);
+		// make the page entries containing virtual address [@start, @end) and mark them as allocable
+		// @begin and @end must be 4kb aligned
+		void lazy_alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable, bool fill_zero);
 
 		// alloc physical frames for page entries containing virtual address [@start, end)
-		void alloc_page_range(uint32_t begin, uint32_t end, bool user, bool writable);
+		// @begin and @end must be 4kb aligned
+		void alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable);
+
+		// @begin and @end must be 4kb aligned
+		void free_interval(uint32_t begin, uint32_t end);
 
 		// load this page directory into the CR3 register
 		void enable();

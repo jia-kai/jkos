@@ -1,6 +1,6 @@
 /*
  * $File: linker.ld
- * $Date: Fri Dec 03 21:05:07 2010 +0800
+ * $Date: Mon Dec 27 13:53:02 2010 +0800
  *
  * the linker script
  *
@@ -41,6 +41,7 @@ SECTIONS
 		*(.text*)
 		*(.gnu.linkonce.t*)
 	}
+	kernel_code_end = .;
 
 	.rodata ALIGN(4096) :
 	{

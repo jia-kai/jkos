@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Mon Dec 20 23:19:30 2010 +0800
+ * $Date: Mon Dec 27 23:15:43 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -115,7 +115,7 @@ void* kmalloc(uint32_t size, int palign)
 		tree_size.erase(ptr);
 		tree_start.erase(tree_start.find_ge(got));
 
-		if (start + size < got.start + got.size)
+		if (start + size + sizeof(Block_t) * 2 < got.start + got.size)
 		{
 			Block_t nblk;
 			nblk.start = start + size;
@@ -127,10 +127,22 @@ void* kmalloc(uint32_t size, int palign)
 			tree_start.insert(nblk);
 		}
 
-		uint32_t alloc_start = (start - sizeof(Block_t)) & 0xFFFFF000,
-				 alloc_end = get_aligned(start + size, 12);
-		for (uint32_t i = alloc_start; i < alloc_end; i += 0x1000)
-			Page::current_page_dir->get_page(i, false)->allocable = true;
+		if (start - got.start > sizeof(Block_t) * 3)
+		{
+			Block_t nblk;
+			nblk.start = got.start;
+			nblk.size = start - got.start - sizeof(Block_t);
+
+			got.size -= nblk.size;
+			got.start += nblk.size;
+
+			tree_size.insert(nblk);
+			tree_start.insert(nblk);
+		}
+
+		Page::current_page_dir->lazy_alloc_interval(
+				(start - sizeof(Block_t)) & 0xFFFFF000, get_aligned(start + size, 12),
+				false, true, false);
 
 		memcpy((void*)(start - sizeof(Block_t)), &got, sizeof(Block_t));
 
@@ -193,15 +205,7 @@ void kfree(void *addr)
 	tree_size.insert(blk);
 
 	// free used pages
-	for (uint32_t i = get_aligned(free_start, 12); i + 0x1000 <= free_end; i += 0x1000)
-	{
-		Page::Table_entry_t *page = Page::current_page_dir->get_page(i, false);
-		if (page->present)
-		{
-			page->free();
-			Page::invlpg(i);
-		}
-	}
+	Page::current_page_dir->free_interval(get_aligned(free_start, 12), free_end & 0xFFFFF000);
 }
 
 uint32_t kheap_get_size_pre_init()
@@ -235,7 +239,7 @@ void kheap_init()
 	tree_start.insert(b);
 
 	for (uint32_t i = KERNEL_HEAP_BEGIN; i < KERNEL_HEAP_END; i += 0x1000)
-		Page::current_page_dir->get_page(i, true)->allocable = false;
+		Page::current_page_dir->get_page(i, true);
 }
 
 void kheap_finish_init()

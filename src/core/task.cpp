@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Sun Dec 26 19:34:57 2010 +0800
+ * $Date: Mon Dec 27 23:09:28 2010 +0800
  *
  * task scheduling and managing
  */
@@ -402,11 +402,7 @@ void move_stack()
 	static uint32_t i, old_esp, old_ebp, 
 					offset, new_esp, new_ebp, tmp;
 
-	for (i = 0; i < KERNEL_STACK_SIZE; i += 0x1000)
-	{
-		Page::current_page_dir->get_page(KERNEL_STACK_POS - 1 - i, true)->alloc(false, true);
-		Page::invlpg(i);
-	}
+	Page::current_page_dir->alloc_interval(KERNEL_STACK_POS - KERNEL_STACK_SIZE, KERNEL_STACK_POS, false, true);
 
 	asm volatile
 	(
