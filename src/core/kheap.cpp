@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Mon Dec 27 23:15:43 2010 +0800
+ * $Date: Tue Dec 28 15:45:09 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -40,6 +40,8 @@ static uint32_t kheap_static_end = (uint32_t)&kernel_img_end + 4;
 
 // used for memory allocating before calling kheap_init
 static void* kmalloc_pre_init(uint32_t size, int palign);
+
+uint32_t USER_MEM_LOW, USER_MEM_HIGH;
 
 struct Block_t
 {
@@ -85,9 +87,6 @@ namespace Tree_mm
 
 static Rbt<Block_size_t> tree_size(Tree_mm::alloc, Tree_mm::free);
 static Rbt<Block_start_t> tree_start(Tree_mm::alloc, Tree_mm::free);
-
-static inline uint32_t get_aligned(uint32_t addr, int palign)
-{ if (!addr) return 0; return (((addr - 1) >> palign) + 1) << palign; }
 
 void* kmalloc(uint32_t size, int palign)
 {
@@ -245,6 +244,8 @@ void kheap_init()
 void kheap_finish_init()
 {
 	kheap_finish_init_called = true;
+	USER_MEM_LOW = get_aligned(kheap_static_end, 22);
+	USER_MEM_HIGH = KERNEL_HEAP_BEGIN - 1;
 	MSG_INFO("kernel heap address range: %p %p", (void*)KERNEL_HEAP_BEGIN, (void*)KERNEL_HEAP_END);
 }
 

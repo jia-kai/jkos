@@ -1,6 +1,6 @@
 /*
  * $File: main.cpp
- * $Date: Mon Dec 27 23:31:04 2010 +0800
+ * $Date: Wed Dec 29 17:39:54 2010 +0800
  *
  * This file contains the main routine of JKOS kernel
  */
@@ -31,7 +31,6 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <common.h>
 #include <kheap.h>
 #include <task.h>
-#include <syscall.h>
 #include <elf.h>
 #include <drv/ramdisk.h>
 #include <lib/cxxsupport.h>
@@ -102,82 +101,13 @@ void test_alloc()
 	delete []ptr;
 }
 
-void test_usermode()
-{
-	Scio::printf("%s\n", __func__);
-	int *x = (int*)kmalloc(sizeof(int), 12);
-	Scio::printf("x=%p\n", x);
-
-	uint32_t uaddr = 0x54323000, uesp = uaddr + 0x500;
-	Page::current_page_dir->get_page(uaddr, true)->alloc(true, true);
-	uint32_t fbegin, fend;
-#include <asm.h>
-	asm volatile
-	(
-		"jmp user_func_end\n"
-		"user_func_begin:\n"
-		"mov %%esp, %%ebx\n"
-		"mov $1, %%eax\n"
-		"int $0x80\n"
-
-		"mov %%edx, %%ebx\n"
-		"mov $1, %%eax\n"
-		"int $0x80\n"
-
-		//"pushl (%%edx)\n"
-
-		//"1: jmp 1b\n"
-
-#if 0
-		"pushl %2\n"
-		"pushl $kmain\n"
-		"pushf\n"
-		"pushl %3\n"
-		"pushl %4\n"
-		"iret\n"
-#endif
-
-		"mov $2, %%eax\n"
-		"int $0x80\n"
-		"mov %%eax, %%ebx\n"
-		"mov $1, %%eax\n"
-		"mov $10, %%ecx\n"
-		"loop:\n"
-		"int $0x80\n"
-		"mov $1000000, %%edx\n"
-		"1:\n"
-		"dec %%edx\n"
-		"cmpl $0, %%edx\n"
-		"jne 1b\n"
-		"dec %%ecx\n"
-		"cmpl $0, %%ecx\n"
-		"jne loop\n"
-
-		"addl $0x100, %%ebx\n"
-		"int $0x80\n"
-
-		"1: jmp 1b\n"
-		"user_func_end:\n"
-		"movl $user_func_begin, %0\n"
-		"movl $user_func_end, %1\n"
-		: "=g"(fbegin), "=g"(fend)
-		: "i"(KERNEL_DATA_SELECTOR), "i"(KERNEL_CODE_SELECTOR), "i"(0)
-	);
-	memcpy((void*)uaddr, (void*)fbegin, fend - fbegin);
-
-	Scio::printf("esp should be 0x%x\n", uesp);
-
-	asm volatile ("mov %0, %%edx"::"g"(x));
-	Task::switch_to_user_mode(uaddr, uesp);
-
-}
-
 void test_fork(Multiboot_info_t *mbd)
 {
 	pid_t fork_ret = Task::fork();
+	Scio::printf("fork returned %d\n", fork_ret);
 	pid_t pid = Task::getpid();
 
-	for (int i = 0; i < 10; i ++)
+	for (int i = 0; i < 5; i ++)
 	{
 		Scio::printf("fork returned: %d   pid: %d\n", fork_ret, pid);
 		for (int volatile j = 0; j < 1000000; j ++);
@@ -235,8 +165,12 @@ void test_elf(Multiboot_info_t *mbd)
 	kassert(mbd->mods_count);
 	uint32_t start = *(uint32_t*)mbd->mods_addr,
 			 end = *(uint32_t*)(mbd->mods_addr + 4);
-	load_elf(ramdisk_get_file_node(start, end));
-	panic("load_elf returned");
+	uint32_t entry = load_elf(ramdisk_get_file_node(start, end)),
+			 stack = 0xC0000000;
+
+	Page::current_page_dir->get_page(stack, true)->alloc(true, true);
+
+	Task::switch_to_user_mode(entry, stack + 0x1000 - 4);
 }
 
 void test_lazy_alloc()
@@ -289,7 +223,6 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 	Page::init(mbd);
 	cxxsupport_init();
 	Task::init();
-	Syscall::init();
 
 	init_timer();
 	isr_register(ISR_GET_NUM_BY_IRQ(1), isr_kbd);
@@ -305,10 +238,9 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	// test_alloc();
 	// test_fork(mbd);
-	// test_usermode();
 	// test_sleep();
-	test_lazy_alloc();
-	// test_elf(mbd);
+	// test_lazy_alloc();
+	test_elf(mbd);
 
 	cxxsupport_finalize();
 }
@@ -329,8 +261,8 @@ void init_timer()
 void timer_tick(Isr_registers_t reg)
 {
 	static int tick;
-	//if (tick % 100 == 0)
-	// Scio::printf("timer tick %d\n", tick);
+	// if (tick % 100 == 0)
+	//	Scio::printf("timer tick %d\n", tick);
 	tick ++;
 	isr_eoi(reg.int_no);
 	Task::schedule();

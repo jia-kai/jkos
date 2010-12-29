@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Sun Dec 26 19:14:58 2010 +0800
+# $Date: Tue Dec 28 16:32:46 2010 +0800
 
 #
 # This file is part of JKOS
@@ -72,7 +72,7 @@ initrd: initrd.cpp
 qemu: hda.img
 	qemu -hda hda.img -monitor stdio
 
-qemu-dbg: kernel.bin
+qemu-dbg: kernel.bin initrd
 	qemu --kernel kernel.bin --initrd initrd -S -s 
 
 clean:

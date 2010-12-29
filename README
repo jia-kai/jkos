@@ -1,0 +1,17 @@
+This is the source tree of JKOS, an operating system
+developed by Jiakai<jia.kai66@gmail.com>.
+
+JKOS is just my experiment and practice, not intended to be really useful. It
+is supposed to support multitasking and signaling, with a POSIX-like
+interface. I only work to get JKOS run on my laptop with an intel Pentium
+Dual-Core, so only X86 architecture is supported. And anyone is welcome to
+join the development!
+
+source tree structure:
+/
+|-- Makefile
+|--	hda.img		image for hda (not pushed)
+|--	kernel.bin	multiboot kernel binary
+|--	initrd		initial ramdisk
+|--	lib/		user space library
+|--	src/		kernel source

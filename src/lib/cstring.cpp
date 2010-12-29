@@ -1,6 +1,6 @@
 /*
  * $File: cstring.cpp
- * $Date: Fri Dec 17 19:24:29 2010 +0800
+ * $Date: Wed Dec 29 19:35:09 2010 +0800
  *
  * functions for manipulating C-style strings
  */
@@ -25,7 +25,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <lib/cstring.h>
 
-void memset(void *dest, int val, int cnt)
+void memset(void *dest, int val, size_t cnt)
 {
 	asm volatile
 	(
@@ -35,7 +35,7 @@ void memset(void *dest, int val, int cnt)
 	);
 }
 
-void memcpy(void *dest, const void *src, int cnt)
+void memcpy(void *dest, const void *src, size_t cnt)
 {
 	asm volatile
 	(

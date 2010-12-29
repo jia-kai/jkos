@@ -1,6 +1,6 @@
 /*
  * $File: task.cpp
- * $Date: Mon Dec 27 23:09:28 2010 +0800
+ * $Date: Wed Dec 29 16:26:43 2010 +0800
  *
  * task scheduling and managing
  */
@@ -182,7 +182,6 @@ pid_t Task::fork()
 
 	uint32_t eip;
 	Task_t *par_task = current_task, *child;
-	pid_t ret = 0;
 
 	child = new Task_t(Page::clone_directory(Page::current_page_dir));
 	child->par = par_task;
@@ -205,13 +204,13 @@ pid_t Task::fork()
 		// so upon next scheduling, child will be started executing at
 		// read_eip() above
 
-		ret = child->id;
+		RESTORE_EFLAGS(old_eflags);
+		return child->id;
 
 	}
 
 	RESTORE_EFLAGS(old_eflags);
-
-	return ret;
+	return 0;
 }
 
 void Task::schedule()

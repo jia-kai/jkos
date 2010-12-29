@@ -1,6 +1,6 @@
 /*
  * $File: asm.h
- * $Date: Tue Dec 14 15:42:28 2010 +0800
+ * $Date: Wed Dec 29 19:49:33 2010 +0800
  *
  * definitions for asm functions
  */
@@ -33,6 +33,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #define TSS_DESCRIPTOR_SELECTOR	0x28
 
+#define NR_SYSCALLS				5
 
 #endif // _HEADER_ASM_
 

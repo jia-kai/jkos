@@ -1,6 +1,6 @@
 /*
  * $File: elf.cpp
- * $Date: Sun Dec 26 21:28:47 2010 +0800
+ * $Date: Tue Dec 28 16:33:34 2010 +0800
  *
  * functions for loading ELFs
  */
@@ -27,6 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <elf.h>
 #include <errno.h>
 #include <page.h>
+#include <lib/cstring.h>
 
 static bool is_header_valid(const Elf32_Ehdr &header);
 
@@ -52,10 +53,48 @@ int load_elf(Fs::Node_file *file)
 		if (header.p_type != PT_LOAD || !header.p_memsz)
 			continue;
 
+		if (header.p_vaddr < USER_MEM_LOW || (uint64_t)header.p_vaddr + header.p_memsz > USER_MEM_HIGH)
+			ERROR_RETURN(ENOMEM);
+
+		uint32_t space_end = header.p_vaddr + header.p_memsz, space_start = header.p_vaddr;
+
+		load_done = true;
+		if (header.p_filesz)
+		{
+			ssize_t filesz = min(header.p_filesz, header.p_memsz);
+			if (file->seek(header.p_offset, Fs::SEEK_SET) == (Fs::off_t)-1)
+				ERROR_RETURN(EIO);
+			Page::current_page_dir->alloc_interval(header.p_vaddr & 0xFFFFF000,
+					get_aligned(header.p_vaddr + header.p_memsz, 12), true, true);
+			if (file->read((void*)header.p_vaddr, filesz) != filesz)
+				ERROR_RETURN(EIO);
+
+			space_start += filesz;
+		}
+
+		if (space_start < space_end)
+		{
+			uint32_t start_alg = get_aligned(space_start, 12);
+			if (space_start != start_alg)
+			{
+				Page::current_page_dir->get_page(space_start, true)->alloc(true, true);
+				memset((void*)space_start, 0, start_alg - space_start);
+			}
+
+			uint32_t end_alg = space_end & 0xFFFFF000;
+			if (end_alg != space_end)
+			{
+				Page::current_page_dir->get_page(end_alg, true)->alloc(true, true);
+				memset((void*)end_alg, 0, space_end - end_alg);
+			}
+
+			Page::current_page_dir->lazy_alloc_interval(start_alg, end_alg, true, true, true);
+		}
 	}
 	if (!load_done)
 		ERROR_RETURN(ENOEXEC);
-	panic("ok");
+
+	return elf_header.e_entry;
 }
 
 bool is_header_valid(const Elf32_Ehdr &header)

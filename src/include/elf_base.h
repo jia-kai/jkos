@@ -1,6 +1,6 @@
 /*
  * $File: elf_base.h
- * $Date: Sat Dec 25 11:34:14 2010 +0800
+ * $Date: Tue Dec 28 15:24:37 2010 +0800
  *
  * modified from elf.h in GNU C Library
  *
@@ -541,7 +541,7 @@ typedef struct
 typedef struct
 {
   Elf32_Word	p_type;			/* Segment type */
-  Elf32_Off	p_offset;		/* Segment file offset */
+  Elf32_Off		p_offset;		/* Segment file offset */
   Elf32_Addr	p_vaddr;		/* Segment virtual address */
   Elf32_Addr	p_paddr;		/* Segment physical address */
   Elf32_Word	p_filesz;		/* Segment size in file */

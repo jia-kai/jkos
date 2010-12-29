@@ -1,6 +1,6 @@
 /*
  * $File: cstring.h
- * $Date: Fri Nov 26 20:32:18 2010 +0800
+ * $Date: Wed Dec 29 19:34:59 2010 +0800
  *
  * functions for manipulating C-style strings
  */
@@ -26,8 +26,10 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _HEADER_CSTRING_
 #define _HEADER_CSTRING_
 
-extern void memset(void *dest, int val, int cnt);
-extern void memcpy(void *dest, const void *src, int cnt);
+#include <common.h>
+
+extern void memset(void *dest, int val, size_t cnt);
+extern void memcpy(void *dest, const void *src, size_t cnt);
 extern char* strcpy(char *dest, const char *src);
 
 #endif // _HEADER_CSTRING_

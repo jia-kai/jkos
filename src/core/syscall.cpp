@@ -1,6 +1,6 @@
 /*
  * $File: syscall.cpp
- * $Date: Tue Dec 21 16:17:11 2010 +0800
+ * $Date: Wed Dec 29 19:41:15 2010 +0800
  *
  * interface for implementing system calls
  */
@@ -23,59 +23,25 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <syscall.h>
-#include <descriptor_table.h>
+#include <asm.h>
 #include <scio.h>
 #include <task.h>
 
-static int test(uint32_t arg)
-{
-	uint16_t cs;
-	asm volatile ("mov %%cs, %0" : "=g"(cs));
-	if (cs != 0x08)
-		panic("%x %p", cs, &cs);
-	Scio::push_color(Scio::GREEN);
-	Scio::printf("called from user mode! arg=0x%x cs=0x%x &cs=%p\n", arg, cs, &cs);
-	Scio::pop_color();
-	return 1;
-}
+extern "C" uint32_t syscall_func_addr[NR_SYSCALLS];
 
-static uint32_t syscall_addr[] =
+static int sys_sleep(pid_t pid, const Sigset *sig_wakeup);
+
+uint32_t syscall_func_addr[NR_SYSCALLS] =
 {
 	(uint32_t)Scio::puts,
-	(uint32_t)test,
-	(uint32_t)Task::fork
+	(uint32_t)Task::fork,
+	(uint32_t)Task::getpid,
+	(uint32_t)sys_sleep,
+	(uint32_t)Task::wakeup
 };
-const uint32_t NR_SYSCALLS = sizeof(syscall_addr) / sizeof(syscall_addr[0]);
 
-static void syscall_handler(Isr_registers_t reg);
-
-
-void Syscall::init()
+static int sys_sleep(pid_t pid, const Sigset *sig_wakeup)
 {
-	isr_register(0x80, syscall_handler);
-}
-
-void syscall_handler(Isr_registers_t reg)
-{
-	if (reg.eax >= NR_SYSCALLS)
-		return;
-
-	asm volatile
-	(
-		"push %1\n"
-		"push %2\n"
-		"push %3\n"
-		"push %4\n"
-		"push %5\n"
-		"call *%6\n"
-		"pop %%ebx\n"
-		"pop %%ebx\n"
-		"pop %%ebx\n"
-		"pop %%ebx\n"
-		"pop %%ebx\n"
-		: "=a"(reg.eax)
-		: "g"(reg.edi), "g"(reg.esi), "g"(reg.edx), "g"(reg.ecx), "g"(reg.ebx), "g"(syscall_addr[reg.eax])
-	);
+	return Task::sleep(pid, *sig_wakeup);
 }
 

@@ -1,6 +1,6 @@
 /*
  * $File: interrupt.S
- * $Date: Thu Dec 09 12:06:44 2010 +0800
+ * $Date: Wed Dec 29 14:28:39 2010 +0800
  *
  * asm functions for handling interrupts
  */
@@ -23,6 +23,8 @@ You should have received a copy of the GNU General Public License
 along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <asm.h>
+
 .comm isr_callback_table, 256 * 4, 4
 
 .macro ISR int, err_code
@@ -39,14 +41,13 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 		mov %ds, %ax
 		push %eax
 
-		mov $0x10, %ax		/* kernel data segment */
+		mov $KERNEL_DATA_SELECTOR, %ax
 		mov %ax, %ds
 		mov %ax, %es
 		mov %ax, %fs
 		mov %ax, %gs
 
-		movl $isr_callback_table, %eax
-		movl 4*\int(%eax), %eax
+		movl isr_callback_table + \int * 4, %eax
 		call *%eax
 
 		pop %eax
@@ -76,7 +77,4 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 .irp n,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47
 	ISR \n, 0
 .endr
-
-/* syscall interrrupt */
-ISR 0x80, 0
 

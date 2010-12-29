@@ -1,6 +1,6 @@
 /*
  * $File: page.h
- * $Date: Mon Dec 27 23:12:28 2010 +0800
+ * $Date: Tue Dec 28 15:53:51 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -64,11 +64,13 @@ namespace Page
 
 
 		// allocate a frame for this page
-		// if a frame is already allocated, nothing happens
+		// if a frame is already allocated, only the rw and user permission bits will be set
 		void alloc(bool user, bool writable);
 
 		// mark this page as allocable, but do not allocate physical memory now
-		// if a frame is already allocated, nothing happens
+		// if a frame is already allocated:
+		//		the rw and user permission bits will be set
+		//		and if @fill_zero is true, the frame will be cleared
 		void lazy_alloc(bool user, bool writable, bool fill_zero);
 
 		void fill_uint32(uint32_t val);
@@ -112,11 +114,11 @@ namespace Page
 		//		otherwise NULL is returned
 		Table_entry_t *get_page(uint32_t addr, bool make = false);
 
-		// make the page entries containing virtual address [@start, @end) and mark them as allocable
+		// lazy allocation on the interval [@start, @end)
 		// @begin and @end must be 4kb aligned
 		void lazy_alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable, bool fill_zero);
 
-		// alloc physical frames for page entries containing virtual address [@start, end)
+		// allocation on the interval [@start, end)
 		// @begin and @end must be 4kb aligned
 		void alloc_interval(uint32_t begin, uint32_t end, bool user, bool writable);
 

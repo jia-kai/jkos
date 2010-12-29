@@ -1,6 +1,6 @@
 /*
  * $File: page.cpp
- * $Date: Mon Dec 27 23:16:45 2010 +0800
+ * $Date: Wed Dec 29 19:22:36 2010 +0800
  *
  * x86 virtual memory management by paging
  */
@@ -52,7 +52,7 @@ static bool init_finished;
 
 static void init_frames(Multiboot_info_t *mbd);
 
-static Table_t *clone_table(Table_t *src);
+static Table_t *clone_table(Table_t *src, uint32_t base_addr);
 
 // copy a frame (4kb) from physical address @src to physical address @dest
 static void copy_page_physical(uint32_t dest, uint32_t src);
@@ -61,29 +61,32 @@ static void page_fault(Isr_registers_t reg); // page fault handler
 
 void Table_entry_t::alloc(bool user_, bool writable)
 {
+	this->rw = writable ? 1 : 0;
+	this->user = user_ ? 1 : 0;
 	if (!this->addr)
 	{
 		if (!nframes)
 			panic("no free frame");
 		this->addr = frames[-- nframes];
 		frame_ref_cnt[this->addr] = 1;
-		MSG_DEBUG("frame 0x%x allocated", this->addr);
 		this->allocable = 1;
 		this->present = 1;
-		this->rw = writable ? 1 : 0;
-		this->user = user_ ? 1 : 0;
+
+		MSG_DEBUG("frame 0x%x allocated", this->addr);
 	}
 }
 
 void Table_entry_t::lazy_alloc(bool user_, bool writable, bool fill_zero)
 {
+	this->rw = writable ? 1 : 0;
+	this->user = user_ ? 1 : 0;
 	if (!this->addr)
 	{
 		this->allocable = 1;
-		this->rw = writable ? 1 : 0;
-		this->user = user_ ? 1 : 0;
 		this->alloc_fill = fill_zero;
 	}
+	else if (fill_zero)
+		this->fill_uint32(0);
 }
 
 void Table_entry_t::fill_uint32(uint32_t val)
@@ -182,14 +185,12 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	}
 
 	// we should copy kernel stack directly instead of using copy-on-write
-	// otherwise will cause triple fault
+	// or you will see triple fault
 	for (uint32_t i = KERNEL_STACK_POS - KERNEL_STACK_SIZE; i < KERNEL_STACK_POS; i += 0x1000)
 	{
-		uint32_t addr = current_page_dir->get_physical_addr((void*)i);
-		if (!addr)
-			panic("x");
 		dest->get_page(i, true);
-		copy_page_physical(dest->get_physical_addr((void*)i, true, false, true), addr);
+		copy_page_physical(dest->get_physical_addr((void*)i, true, false, true),
+				current_page_dir->get_physical_addr((void*)i));
 	}
 
 
@@ -197,7 +198,7 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	for (uint32_t i = kernel_low_ntable; i < (KERNEL_HEAP_BEGIN >> 22); i ++)
 		if (src->tables[i])
 		{
-			dest->tables[i] = clone_table(src->tables[i]);
+			dest->tables[i] = clone_table(src->tables[i], i << 22);
 			dest->entries[i] = src->entries[i];
 			dest->entries[i].addr = current_page_dir->get_physical_addr(dest->tables[i]) >> 12;
 		}
@@ -205,7 +206,7 @@ Directory_t *Page::clone_directory(const Directory_t *src)
 	return dest;
 }
 
-Table_t *clone_table(Table_t *src)
+Table_t *clone_table(Table_t *src, uint32_t base_addr)
 {
 	Table_t *dest = static_cast<Table_t*>(kmalloc(sizeof(Table_t), 12));
 	memset(dest, 0, sizeof(Table_t));
@@ -215,6 +216,7 @@ Table_t *clone_table(Table_t *src)
 			src->pages[i].rw = 0;
 			dest->pages[i] = src->pages[i];
 			frame_ref_cnt[src->pages[i].addr] ++;
+			invlpg(base_addr | (i << 12));
 		}
 		else dest->pages[i] = src->pages[i];
 	return dest;

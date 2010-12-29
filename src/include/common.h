@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Sun Dec 26 19:35:32 2010 +0800
+ * $Date: Tue Dec 28 15:42:11 2010 +0800
  *
  * some common definitions and functions
  */
@@ -26,6 +26,8 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _HEADER_COMMON_
 #define _HEADER_COMMON_
 
+
+// type definitions
 typedef char int8_t;
 typedef unsigned char uint8_t;
 typedef short int int16_t;
@@ -35,8 +37,14 @@ typedef unsigned int uint32_t;
 typedef long long int int64_t;
 typedef unsigned long long int uint64_t;
 
+typedef uint32_t size_t; // size type
+typedef int32_t ssize_t; // signed size type
+
 #define NULL 0
 
+
+
+// commonly used functions
 extern void _panic_func(const char *file, const char *func, int line,
 		const char *fmt, ...) __attribute__((format(printf, 4, 5), noreturn));
 
@@ -79,9 +87,12 @@ template <typename T>
 static inline const T& min(const T &a, const T &b)
 { return a < b ? a : b; }
 
-typedef uint32_t size_t; // size type
-typedef int32_t ssize_t; // signed size type
+static inline uint32_t get_aligned(uint32_t addr, int palign)
+{ if (!addr) return 0; return (((addr - 1) >> palign) + 1) << palign; }
 
+
+
+// constants
 static const uint32_t
 	CLOCK_TICK_RATE	=	1193180,
 	KERNEL_HZ		=	50,
@@ -95,6 +106,10 @@ static const uint32_t
 	KERNEL_HEAP_END		= (KERNEL_STACK_POS - KERNEL_STACK_SIZE) & 0xFFC00000,
 	KERNEL_HEAP_BEGIN	= KERNEL_HEAP_END - 256 * 1024 * 1024;
 
+
+// global variables
+extern uint32_t
+	USER_MEM_LOW, USER_MEM_HIGH; // defined in kheap.cpp
 
 #endif // _HEADER_COMMON_
 
