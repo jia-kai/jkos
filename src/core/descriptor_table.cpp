@@ -29,7 +29,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <descriptor_table.h>
 #include <lib/cstring.h>
 #include <port.h>
-#include <scio.h>
+#include <klog.h>
 #include <asm.h>
 
 // defined in misc.s
@@ -168,7 +168,7 @@ void isr_register(int num, Isr_t callback)
 
 void isr_unhandled(Isr_registers_t reg)
 {
-	Scio::printf("unhandled interrupt: int_no=0x%x  err_code=0x%x\n",
+	Klog::printf("unhandled interrupt: int_no=0x%x  err_code=0x%x\n",
 			reg.int_no, reg.err_code);
 
 	if (reg.int_no >= 32 && reg.int_no <= 47)

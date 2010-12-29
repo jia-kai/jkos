@@ -26,7 +26,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <task.h>
 #include <common.h>
 #include <page.h>
-#include <scio.h>
+#include <klog.h>
 #include <asm.h>
 #include <kheap.h>
 #include <descriptor_table.h>
@@ -172,7 +172,7 @@ void Task::init()
 
 	schedule();
 
-	MSG_INFO("tasking initialized");
+	Klog::log(Klog::INFO, "tasking initialized");
 }
 
 pid_t Task::fork()

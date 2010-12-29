@@ -1,6 +1,6 @@
 /*
  * $File: common.h
- * $Date: Tue Dec 28 15:42:11 2010 +0800
+ * $Date: Wed Dec 29 20:16:53 2010 +0800
  *
  * some common definitions and functions
  */
@@ -50,7 +50,7 @@ extern void _panic_func(const char *file, const char *func, int line,
 
 #define panic(fmt, args...)  _panic_func(__FILE__, __PRETTY_FUNCTION__, __LINE__, fmt, ## args)
 
-#ifdef DEBUG
+#ifdef _DEBUG_BUILD_
 extern void _kassert_failed(const char *statement, const char *file, int line) __attribute__((noreturn));
 #	define kassert(s) \
 	do \

@@ -26,7 +26,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <lib/cstring.h>
 #include <page.h>
 #include <multiboot.h>
-#include <scio.h>
+#include <klog.h>
 #include <descriptor_table.h>
 #include <kheap.h>
 #include <task.h>
@@ -72,7 +72,7 @@ void Table_entry_t::alloc(bool user_, bool writable)
 		this->allocable = 1;
 		this->present = 1;
 
-		MSG_DEBUG("frame 0x%x allocated", this->addr);
+		Klog::log(Klog::DEBUG, "frame 0x%x allocated", this->addr);
 	}
 }
 
@@ -108,7 +108,7 @@ void Table_entry_t::free()
 		if (!(-- frame_ref_cnt[this->addr]))
 		{
 			frames[nframes ++] = this->addr;
-			MSG_DEBUG("frame 0x%x freed", this->addr);
+			Klog::log(Klog::DEBUG, "frame 0x%x freed", this->addr);
 		}
 		this->addr = 0;
 		this->present = 0;
@@ -318,7 +318,7 @@ void Page::init(void *ptr_mbd)
 	empty_page0_ptr->present = 1;
 	empty_page1_ptr->present = 1;
 
-	MSG_INFO("page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
+	Klog::log(Klog::INFO, "page initialization completed.\n kernel static memory usage: %d kb\n available 4k frames: %d (%d mb)",
 			(kheap_get_size_pre_init() - 0x100000) >> 10, nframes, nframes * 4 / 1024);
 }
 
@@ -350,7 +350,7 @@ void page_fault(Isr_registers_t reg)
 			{
 				if (!page->addr || !frame_ref_cnt[page->addr])
 				{
-					Scio::printf("frame reference count error\n");
+					Klog::printf("frame reference count error\n");
 					goto error;
 				}
 				if (frame_ref_cnt[page->addr] == 1)
@@ -370,8 +370,8 @@ void page_fault(Isr_registers_t reg)
 
 error:
 
-	Scio::push_color(Scio::LIGHT_RED);
-	Scio::printf("page fault: entry_addr=%p requested_addr=%p\nerr_code=0x%x",
+	Klog::push_color(Klog::LIGHT_RED);
+	Klog::printf("page fault: entry_addr=%p requested_addr=%p\nerr_code=0x%x",
 			page, (void*)addr, reg.err_code);
 
 	const char * BIT_MEAN[4][2] =
@@ -389,18 +389,18 @@ error:
 		{
 			if (first)
 			{
-				Scio::puts(" (");
+				Klog::puts(" (");
 				first = false;
 			}
-			else Scio::puts(", ");
+			else Klog::puts(", ");
 
-			Scio::puts(BIT_MEAN[i][x]);
+			Klog::puts(BIT_MEAN[i][x]);
 		}
 	}
 	if (!first)
-		Scio::puts(") ");
+		Klog::puts(") ");
 
-	Scio::puts("\n");
+	Klog::puts("\n");
 
 	panic("page fault");
 }
@@ -413,7 +413,7 @@ void init_frames(Multiboot_info_t *mbd)
 	{
 		Multiboot_mmap_entry_t *mmap = (Multiboot_mmap_entry_t*)mmap_addr;
 
-		MSG_INFO("mmap: %s: start=0x%x len=%d kb",
+		Klog::log(Klog::INFO, "mmap: %s: start=0x%x len=%d kb",
 				mmap->type == MULTIBOOT_MEMORY_AVAILABLE ?  "available" : "reserved",
 				(uint32_t)mmap->addr, (uint32_t)mmap->len >> 10);
 

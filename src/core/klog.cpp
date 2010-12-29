@@ -1,6 +1,6 @@
 /*
- * $File: scio.cpp
- * $Date: Fri Dec 03 14:03:12 2010 +0800
+ * $File: klog.cpp
+ * $Date: Wed Dec 29 20:20:24 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -25,7 +25,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <common.h>
 #include <lib/stdarg.h>
-#include <scio.h>
+#include <klog.h>
 #include <port.h>
 
 #include <lib/cstring.h>
@@ -46,7 +46,7 @@ static inline void move_cursor();
 
 static const char *u2s(unsigned n, int base);
 
-void Scio::init()
+void Klog::init()
 {
 	char c = (*(volatile uint16_t*)0x410) & 0x30;
 	if (c == 0x30)
@@ -64,7 +64,7 @@ void Scio::init()
 }
 
 
-void Scio::push_color(Color_t forecolor, Color_t backcolor)
+void Klog::push_color(Color_t forecolor, Color_t backcolor)
 {
 	if (ncolor_stack == COLOR_STACK_SIZE)
 		ncolor_stack --;
@@ -75,13 +75,13 @@ void Scio::push_color(Color_t forecolor, Color_t backcolor)
 		color_stack[ncolor_stack ++] = (uint8_t)(((uint8_t)backcolor) << 4 | ((uint8_t)forecolor));
 }
 
-void Scio::pop_color()
+void Klog::pop_color()
 {
 	if (ncolor_stack > 1)
 		ncolor_stack --;
 }
 
-void Scio::printf(const char *fmt, ...)
+void Klog::printf(const char *fmt, ...)
 {
 	va_list argp;
 	va_start(argp, fmt);
@@ -89,14 +89,31 @@ void Scio::printf(const char *fmt, ...)
 	va_end(argp);
 }
 
-void Scio::puts(const char *str)
+void Klog::log(Log_level_t level, const char *fmt, ...)
+{
+	kassert(level >= DEBUG && level <= ERROR);
+	static const char * LEVEL_STR[] = {"[debug] ", "[info] ", "[error] "};
+	push_color(LIGHT_BLUE);
+	puts(LEVEL_STR[(int)level]);
+	pop_color();
+
+
+	va_list argp;
+	va_start(argp, fmt);
+	vprintf(fmt, argp);
+	va_end(argp);
+
+	puts("\n");
+}
+
+void Klog::puts(const char *str)
 {
 	while (*str)
 		putc(*(str ++));
 	move_cursor();
 }
 
-void Scio::vprintf(const char *fmt, va_list argp)
+void Klog::vprintf(const char *fmt, va_list argp)
 {
 	static char buf_mem[128];
 	const char *buf;
@@ -207,7 +224,7 @@ void Scio::vprintf(const char *fmt, va_list argp)
 	move_cursor();
 }
 
-void Scio::cls()
+void Klog::cls()
 {
 	xpos = ypos = 0;
 	for (int i = 0, j = NCOL * NROW * 2; i < j; i += 2)

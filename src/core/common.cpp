@@ -1,6 +1,6 @@
 /*
  * $File: common.cpp
- * $Date: Wed Dec 08 19:11:35 2010 +0800
+ * $Date: Wed Dec 29 20:17:27 2010 +0800
  *
  * some common definitions and functions
  */
@@ -25,28 +25,28 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <common.h>
 #include <lib/stdarg.h>
-#include <scio.h>
+#include <klog.h>
 #include <port.h>
 
 static void die() __attribute__((noreturn));
 
 void _panic_func(const char *file, const char *func, int line, const char *fmt, ...)
 {
-	Scio::push_color(Scio::RED, Scio::BLACK);
-	Scio::printf("KERNEL PANIC at %s:%s:%d :\n", file, func, line);
+	Klog::push_color(Klog::RED, Klog::BLACK);
+	Klog::printf("KERNEL PANIC at %s:%s:%d :\n", file, func, line);
 	va_list ap;
 	va_start(ap, fmt);
-	Scio::vprintf(fmt, ap);
+	Klog::vprintf(fmt, ap);
 	va_end(ap);
 
 	die();
 }
 
-#ifdef DEBUG
+#ifdef _DEBUG_BUILD_
 void _kassert_failed(const char *statement, const char *file, int line)
 {
-	Scio::push_color(Scio::RED, Scio::BLACK);
-	Scio::printf("assertion \"%s\" failed at %s:%d\n",
+	Klog::push_color(Klog::RED, Klog::BLACK);
+	Klog::printf("assertion \"%s\" failed at %s:%d\n",
 			statement, file, line);
 
 	die();

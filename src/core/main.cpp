@@ -24,7 +24,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <multiboot.h>
-#include <scio.h>
+#include <klog.h>
 #include <descriptor_table.h>
 #include <port.h>
 #include <page.h>
@@ -44,7 +44,7 @@ static int volatile last_key;
 
 static void wait_key()
 {
-	Scio::printf("press any key to continue...\n");
+	Klog::printf("press any key to continue...\n");
 	for (int volatile i = 0; i < 10000000; i ++);
 	last_key = 0;
 	while (!last_key);
@@ -55,25 +55,25 @@ void test_alloc()
 #if 1
 	for (int l = 0; l < 3; l ++)
 	{
-		Scio::printf("\n\nLoop %d:\n", l);
+		Klog::printf("\n\nLoop %d:\n", l);
 		void* ptr[3];
 		for (int i = 0; i < 3; i ++)
 		{
-			Scio::printf("\nsubloop %d\n", i);
+			Klog::printf("\nsubloop %d\n", i);
 			ptr[i] = kmalloc(8 + i, 12 - i);
-			Scio::printf("arg=%d,%d  ptr[%d]=%p ",
+			Klog::printf("arg=%d,%d  ptr[%d]=%p ",
 					8 + i, 12 - i, i, ptr[i]);
 			*(volatile char*)ptr[i] = 'x';
-			Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr[i])));
+			Klog::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr[i])));
 			kheap_output_debug_msg();
 			wait_key();
 		}
 
 		for (int i = 0; i < 3; i ++)
 		{
-			Scio::printf("\nsubloop %d\n", i);
+			Klog::printf("\nsubloop %d\n", i);
 			kfree((void*)ptr[i]);
-			Scio::printf("ptr[%d] freed (orig addr=%p)\n", i, ptr[i]);
+			Klog::printf("ptr[%d] freed (orig addr=%p)\n", i, ptr[i]);
 			kheap_output_debug_msg();
 			wait_key();
 		}
@@ -83,18 +83,18 @@ void test_alloc()
 	for (int i = 0; i < 4; i ++)
 	{
 		int *x = (int*)kmalloc(sizeof(int), i & 1 ? 12 : 0);
-		Scio::printf("arg=%d,%d addr=%p ", sizeof(int),
+		Klog::printf("arg=%d,%d addr=%p ", sizeof(int),
 				i & 1 ? 12 : 0, x);
 		*(volatile int *)x = 1;
-		Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(x)));
+		Klog::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(x)));
 		kfree(x);
 		wait_key();
 	}
 
 	int *ptr = new int[8192];
-	Scio::printf("new int[8192]: addr=%p ", ptr);
+	Klog::printf("new int[8192]: addr=%p ", ptr);
 	memset(ptr, 0, sizeof(int) * 8192);
-	Scio::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr)));
+	Klog::printf("phyaddr=%p\n", (void*)(Page::current_page_dir->get_physical_addr(ptr)));
 	kheap_output_debug_msg();
 
 	wait_key();
@@ -104,12 +104,12 @@ void test_alloc()
 void test_fork(Multiboot_info_t *mbd)
 {
 	pid_t fork_ret = Task::fork();
-	Scio::printf("fork returned %d\n", fork_ret);
+	Klog::printf("fork returned %d\n", fork_ret);
 	pid_t pid = Task::getpid();
 
 	for (int i = 0; i < 5; i ++)
 	{
-		Scio::printf("fork returned: %d   pid: %d\n", fork_ret, pid);
+		Klog::printf("fork returned: %d   pid: %d\n", fork_ret, pid);
 		for (int volatile j = 0; j < 1000000; j ++);
 	}
 
@@ -118,7 +118,7 @@ void test_fork(Multiboot_info_t *mbd)
 		uint32_t start = *(uint32_t*)mbd->mods_addr,
 				 end = *(uint32_t*)(mbd->mods_addr + 4);
 
-		MSG_INFO("ramdisk found: start=0x%x end=0x%x", start, end);
+		Klog::log(Klog::INFO, "ramdisk found: start=0x%x end=0x%x", start, end);
 
 		Fs::Node_file *file = ramdisk_get_file_node(start, end);
 		char buf[256];
@@ -126,14 +126,14 @@ void test_fork(Multiboot_info_t *mbd)
 		for (int i = 0; i < 2; i ++)
 		{
 			file->read(buf, 256);
-			Scio::printf("(pid %d) ramdisk: %s\n", pid, buf);
+			Klog::printf("(pid %d) ramdisk: %s\n", pid, buf);
 			buf[0] = (char)('0' + pid);
 			file->write(buf, 256);
 			for (int volatile j = 0; j < 1000000; j ++);
 		}
 	}
 
-	Scio::printf("(pid %d) done\n", pid);
+	Klog::printf("(pid %d) done\n", pid);
 	for (; ;);
 }
 
@@ -155,7 +155,7 @@ void test_sleep()
 		}
 		if (i == 20 && pid == 0)
 			Task::wakeup(1);
-		Scio::printf("pid %d: %d\n", pid, i);
+		Klog::printf("pid %d: %d\n", pid, i);
 		for (int volatile j = 0; j  < 10000000; j ++);
 	}
 }
@@ -183,23 +183,23 @@ void test_lazy_alloc()
 	}
 	for (int i = 0; i <= 0x5000; i += 0x1000)
 		Page::current_page_dir->get_page(0x60000000 + i)->free();
-	Scio::printf("lazy alloc (not filling)\n");
+	Klog::printf("lazy alloc (not filling)\n");
 	uint32_t addr = 0x67890000;
 	Page::current_page_dir->get_page(addr, true)->lazy_alloc(false, true, false);
-	Scio::printf("checking...\n");
+	Klog::printf("checking...\n");
 	for (uint32_t i = 0; i < 0x1000; i += 4)
 	{
 		uint32_t *ptr = (uint32_t*)(i + addr);
 		if (*ptr)
 		{
-			Scio::printf("%p: %d\n", ptr, *ptr);
+			Klog::printf("%p: %d\n", ptr, *ptr);
 			break;
 		}
 	}
 	addr += 0x1000;
-	Scio::printf("lazy alloc (filling)\n");
+	Klog::printf("lazy alloc (filling)\n");
 	Page::current_page_dir->get_page(addr, true)->lazy_alloc(false, true, true);
-	Scio::printf("checking...\n");
+	Klog::printf("checking...\n");
 	for (uint32_t i = 0; i < 0x1000; i += 4)
 	{
 		uint32_t *ptr = (uint32_t*)(i + addr);
@@ -212,11 +212,11 @@ void test_lazy_alloc()
 extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 {
 	init_descriptor_tables();
-	Scio::init();
+	Klog::init();
 
 	if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
 	{
-		Scio::printf("invalid magic: 0x%x\n", magic);
+		Klog::printf("invalid magic: 0x%x\n", magic);
 		return;
 	}
 
@@ -229,7 +229,7 @@ extern "C" void kmain(Multiboot_info_t *mbd, uint32_t magic)
 
 	asm volatile ("sti");
 
-	Scio::printf("hello, world!\n");
+	Klog::printf("hello, world!\n");
 
 	/*
 	volatile int *x = NULL;
@@ -262,7 +262,7 @@ void timer_tick(Isr_registers_t reg)
 {
 	static int tick;
 	// if (tick % 100 == 0)
-	//	Scio::printf("timer tick %d\n", tick);
+	//	Klog::printf("timer tick %d\n", tick);
 	tick ++;
 	isr_eoi(reg.int_no);
 	Task::schedule();
@@ -273,7 +273,7 @@ void isr_kbd(Isr_registers_t reg)
 	last_key = 0;
 	uint8_t code = Port::inb(0x60);
 
-	// Scio::printf("keyboard scancode: 0x%x\n", code);
+	// Klog::printf("keyboard scancode: 0x%x\n", code);
 
 	last_key = code;
 

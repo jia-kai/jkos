@@ -1,6 +1,6 @@
 /*
- * $File: scio.h
- * $Date: Mon Dec 20 20:34:14 2010 +0800
+ * $File: klog.h
+ * $Date: Wed Dec 29 20:11:55 2010 +0800
  *
  * functions for doing basic screen output and keyboard input
  */
@@ -26,7 +26,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _HEADER_SCIO_
 #define _HEADER_SCIO_
 
-namespace Scio
+namespace Klog
 {
 	/*
 	 * like the printf in libc
@@ -35,6 +35,13 @@ namespace Scio
 	 */
 	extern void printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 	extern void puts(const char *str);
+
+	enum Log_level_t
+	{
+		DEBUG, INFO, ERROR
+	};
+
+	extern void log(Log_level_t level, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
 #ifdef _HEADER_STDARG_
 	extern void vprintf(const char *fmt, va_list argp);
@@ -63,30 +70,6 @@ namespace Scio
 	// initialize and call cls()
 	extern void init();
 }
-
-#ifdef DEBUG
-#define MSG_DEBUG(fmt, arg...) \
-do \
-{ \
-	Scio::push_color(Scio::LIGHT_BLUE, Scio::BLACK); \
-	Scio::puts("[debug] "); \
-	Scio::pop_color(); \
-	Scio::printf(fmt, ## arg); \
-	Scio::puts("\n"); \
-} while(0)
-#else
-#define MSG_DEBUG(fmt, arg...) do {} while(0)
-#endif
-
-#define MSG_INFO(fmt, arg...) \
-do \
-{ \
-	Scio::push_color(Scio::LIGHT_BLUE, Scio::BLACK); \
-	Scio::puts("[info] "); \
-	Scio::pop_color(); \
-	Scio::printf(fmt, ## arg); \
-	Scio::puts("\n"); \
-} while(0)
 
 #endif // _HEADER_SCIO_
 

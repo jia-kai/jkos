@@ -1,6 +1,6 @@
 /*
  * $File: kheap.cpp
- * $Date: Tue Dec 28 15:45:09 2010 +0800
+ * $Date: Wed Dec 29 20:17:41 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -26,7 +26,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 #include <kheap.h>
 #include <common.h>
 #include <page.h>
-#include <scio.h>
+#include <klog.h>
 #include <lib/rbtree.h>
 #include <lib/cstring.h>
 
@@ -246,7 +246,7 @@ void kheap_finish_init()
 	kheap_finish_init_called = true;
 	USER_MEM_LOW = get_aligned(kheap_static_end, 22);
 	USER_MEM_HIGH = KERNEL_HEAP_BEGIN - 1;
-	MSG_INFO("kernel heap address range: %p %p", (void*)KERNEL_HEAP_BEGIN, (void*)KERNEL_HEAP_END);
+	Klog::log(Klog::INFO, "kernel heap address range: %p %p", (void*)KERNEL_HEAP_BEGIN, (void*)KERNEL_HEAP_END);
 }
 
 void* Tree_mm::alloc()
@@ -267,16 +267,16 @@ void Tree_mm::free(void *ptr)
 	freed[nfreed ++] = ptr;
 }
 
-#ifdef DEBUG
+#ifdef _DEBUG_BUILD_
 template <typename T>
 void walk_block(const T &b)
 {
-	Scio::printf(" * start=0x%x size=0x%x\n", b.start, b.size);
+	Klog::printf(" * start=0x%x size=0x%x\n", b.start, b.size);
 }
 
 void kheap_output_debug_msg()
 {
-	using namespace Scio;
+	using namespace Klog;
 
 	push_color(LIGHT_GREEN, BLACK);
 	puts("start kernel heap debug output\n");
@@ -292,5 +292,5 @@ void kheap_output_debug_msg()
 	puts("end kernel heap debug output\n");
 	pop_color();
 }
-#endif // DEBUG
+#endif // _DEBUG_BUILD_
 

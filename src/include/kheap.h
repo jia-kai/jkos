@@ -1,6 +1,6 @@
 /*
  * $File: kheap.h
- * $Date: Tue Dec 14 20:22:58 2010 +0800
+ * $Date: Wed Dec 29 20:17:07 2010 +0800
  *
  * manipulate kernel heap (virtual memory)
  */
@@ -53,7 +53,7 @@ extern void kheap_preserve_mem(uint32_t addr);
 extern uint32_t kheap_get_size_pre_init(); 
 
 
-#ifdef DEBUG
+#ifdef _DEBUG_BUILD_
 extern void kheap_output_debug_msg();
 #endif
 

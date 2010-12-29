@@ -1,5 +1,5 @@
 # $File: Makefile
-# $Date: Tue Dec 28 16:32:46 2010 +0800
+# $Date: Wed Dec 29 20:18:46 2010 +0800
 
 #
 # This file is part of JKOS
@@ -30,7 +30,7 @@ CXX = g++
 CC = gcc
 
 INCLUDE_DIR = -I src/include
-DEFINES = -DDEBUG
+DEFINES = -D_DEBUG_BUILD_
 CXXFLAGS = -Wall -Wextra -Werror -Woverloaded-virtual -Wsign-promo -Wignored-qualifiers -Wfloat-equal -Wshadow \
 		   -Wcast-qual  -Wcast-align -Wconversion  -Wlogical-op -Waggregate-return -Winline -Woverlength-strings \
 		   -nostdlib -nostartfiles -nodefaultlibs -fno-exceptions -fno-builtin -fno-rtti \

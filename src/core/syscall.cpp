@@ -24,7 +24,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <asm.h>
-#include <scio.h>
+#include <klog.h>
 #include <task.h>
 
 extern "C" uint32_t syscall_func_addr[NR_SYSCALLS];
@@ -33,7 +33,7 @@ static int sys_sleep(pid_t pid, const Sigset *sig_wakeup);
 
 uint32_t syscall_func_addr[NR_SYSCALLS] =
 {
-	(uint32_t)Scio::puts,
+	(uint32_t)Klog::puts,
 	(uint32_t)Task::fork,
 	(uint32_t)Task::getpid,
 	(uint32_t)sys_sleep,

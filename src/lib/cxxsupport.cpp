@@ -27,7 +27,7 @@ along with JKOS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <common.h>
 #include <kheap.h>
-#include <scio.h>
+#include <klog.h>
 #include <lib/cxxsupport.h>
 
 // defined in the linker script
@@ -94,7 +94,7 @@ void __cxa_finalize(void *f)
 		 * an object file exist at runtime in a particular application. This can be used to tell 
 		 * when a shared object is no longer in use. It is one of many methods, however.
 		 **/
-		MSG_DEBUG("__cxa_finalize called with f=0");
+		Klog::log(Klog::DEBUG, "__cxa_finalize called with f=0");
 		for (int i = natexit_funcs; (-- i) >= 0; )
 			(*atexit_funcs[i].func)(atexit_funcs[i].arg);
 		natexit_funcs = 0;

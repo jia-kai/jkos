@@ -1,6 +1,6 @@
 /*
  * $File: syscall.S
- * $Date: Wed Dec 29 14:49:44 2010 +0800
+ * $Date: Wed Dec 29 20:19:43 2010 +0800
  *
  * isr0x80 handler
  *
@@ -57,7 +57,7 @@ isr0x80:
 	pushl %ebx
 
 	movl 4 * 6(%esp), %eax	/* restore original eax */
-	call syscall_func_addr(, %eax, 4)
+	call *syscall_func_addr(, %eax, 4)
 
 	movl 4 * 5(%esp), %ebx
 	mov %bx, %ds
